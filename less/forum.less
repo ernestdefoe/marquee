@@ -35,7 +35,7 @@
 
   &-poster {
     width: 100%;
-    aspect-ratio: 2 / 3;
+    aspect-ratio: ~"2 / 3";
     object-fit: cover;
     border-radius: 8px;
     box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
@@ -43,7 +43,7 @@
   }
 
   &--game &-poster {
-    aspect-ratio: 2 / 3;
+    aspect-ratio: ~"2 / 3";
   }
 
   &-body {
@@ -523,7 +523,7 @@
 
     img {
       width: 100%;
-      aspect-ratio: 16 / 9;
+      aspect-ratio: ~"16 / 9";
       object-fit: cover;
       border-radius: 4px;
       background: rgba(255, 255, 255, 0.08);
@@ -586,7 +586,7 @@
 
 .MarqueeEpisode-still {
   position: relative;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: ~"16 / 9";
   max-height: 360px;
   width: 100%;
   background: #0b0d11 center / cover no-repeat;
@@ -721,4 +721,63 @@
     padding: 2px 8px;
     font-size: 12px;
   }
+}
+
+// ---- Loading, empty and missing-image states -------------------------------
+.Marquee-status {
+  padding: 12px 14px;
+  color: var(--muted-color);
+  font-size: 13px;
+}
+
+.Marquee-noPoster,
+.Marquee-noPhoto,
+.Marquee-noStill {
+  display: block;
+  flex: none;
+  background: rgba(127, 127, 127, 0.2);
+}
+
+.Marquee-result .Marquee-noPoster {
+  width: 34px;
+  height: 51px;
+  border-radius: 3px;
+}
+
+.MarqueeSeasons-season .Marquee-noPoster {
+  width: 38px;
+  height: 57px;
+  border-radius: 4px;
+}
+
+.MarqueeHero-cast .Marquee-noPhoto {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 6px;
+  border-radius: 50%;
+}
+
+.MarqueeEpisode-guests .Marquee-noPhoto {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.MarqueeSeasons-episode .Marquee-noStill {
+  width: 100%;
+  aspect-ratio: ~"16 / 9";
+  border-radius: 4px;
+}
+
+.MarqueeSeasons-panel {
+  margin-top: 12px;
+}
+
+.MarqueeSeasons-failed {
+  margin: 0;
+  opacity: 0.75;
+}
+
+.MarqueeHero-scoreLabel {
+  max-width: 7em;
 }

@@ -1,16 +1,13 @@
 import Component from 'flarum/common/Component';
+import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import classList from 'flarum/common/utils/classList';
-import { SOURCES, label, search } from '../fixtures';
-
-export const typeForTags = (tags) => {
-  const slugs = (tags || []).map((t) => t.slug());
-  return Object.keys(SOURCES).find((type) => slugs.includes(SOURCES[type].tag));
-};
+import { t, text, img, sourceName, kindForTags, titleFor } from '../util';
+import { search, lookup } from '../api';
 
 /**
- * The discussion title input. Under a Movies, TV Shows or Games tag it searches
- * that source and offers a dropdown of matches; under any other tag, or none,
- * it is the normal title field.
+ * The discussion title input. Under a tag linked to a source it searches that
+ * source and offers a dropdown of matches; under any other tag, or none, it is
+ * the normal title field.
  */
 export default class TitlePicker extends Component {
   oninit(vnode) {
@@ -18,32 +15,34 @@ export default class TitlePicker extends Component {
     this.results = [];
     this.active = 0;
     this.open = false;
+    this.loading = false;
+    this.failed = false;
+    this.seq = 0;
   }
 
   view() {
     const { composer, disabled } = this.attrs;
-    const type = this.type();
-    const placeholder = type ? SOURCES[type].placeholder : this.attrs.placeholder;
-    const open = !!type && this.open && this.results.length > 0;
+    const kind = this.kind();
+    const open = !!kind && this.open && (this.loading || this.failed || this.results.length > 0);
 
     return (
       <h3 className="Marquee-titleField">
         <input
           className="FormControl DiscussionComposer-title"
           value={composer.fields.title()}
-          placeholder={placeholder}
+          placeholder={kind ? text(`picker.placeholder_${kind}`) : this.attrs.placeholder}
           disabled={disabled}
-          role={type ? 'combobox' : undefined}
-          aria-expanded={type ? (open ? 'true' : 'false') : undefined}
-          aria-autocomplete={type ? 'list' : undefined}
-          aria-controls={type ? 'Marquee-results' : undefined}
-          aria-activedescendant={open ? `Marquee-result-${this.active}` : undefined}
+          role={kind ? 'combobox' : undefined}
+          aria-expanded={kind ? String(open) : undefined}
+          aria-autocomplete={kind ? 'list' : undefined}
+          aria-controls={kind ? 'Marquee-results' : undefined}
+          aria-activedescendant={open && this.results.length ? `Marquee-result-${this.active}` : undefined}
           oninput={(e) => this.oninput(e.target.value)}
           onkeydown={(e) => this.onkeydown(e)}
-          onfocus={() => this.find()}
+          onfocus={() => this.results.length && (this.open = true)}
           onblur={() => setTimeout(() => ((this.open = false), m.redraw()), 150)}
         />
-        {open ? this.dropdown() : null}
+        {open ? this.dropdown(kind) : null}
       </h3>
     );
   }
@@ -51,13 +50,13 @@ export default class TitlePicker extends Component {
   onupdate(vnode) {
     super.onupdate(vnode);
 
-    // Once a media tag is chosen, put the cursor in the search box. The tag
-    // modal focuses the post body when it closes, so wait for it.
-    const type = this.type();
-    if (type && type !== this.lastType && !this.attrs.composer.fields.title()) {
+    // Once a sourced tag is chosen, put the cursor in the search box. The tag
+    // modal focuses the post body as it closes, so wait for it.
+    const kind = this.kind();
+    if (kind && kind !== this.lastKind && !this.attrs.composer.fields.title()) {
       setTimeout(() => this.element.querySelector('input')?.focus(), 50);
     }
-    this.lastType = type;
+    this.lastKind = kind;
 
     // The composer clips its content, so fit the list to the room under the title.
     const list = this.element.querySelector('.Marquee-results');
@@ -68,32 +67,40 @@ export default class TitlePicker extends Component {
     }
   }
 
-  dropdown() {
-    const rows = this.results.map((item, i) => (
-      <li
-        id={`Marquee-result-${i}`}
-        role="option"
-        aria-selected={i === this.active ? 'true' : 'false'}
-        className={classList('Marquee-result', { active: i === this.active })}
-        onmousedown={(e) => (e.preventDefault(), this.pick(item))}
-        onmouseenter={() => (this.active = i)}
-      >
-        <img src={item.poster} alt="" loading="lazy" />
-        <span>
-          <b>{item.title}</b>
-          <small>
-            {[item.year, ...item.credits.slice(0, 1).map((c) => c[1]), item.platforms ? item.platforms.slice(0, 2).join(', ') : item.meta[2]]
-              .filter(Boolean)
-              .join(' · ')}
-          </small>
-        </span>
-      </li>
-    ));
+  dropdown(kind) {
+    let rows;
+
+    if (this.loading && !this.results.length) {
+      rows = [
+        <li className="Marquee-status">
+          <LoadingIndicator size="small" display="inline" />
+        </li>,
+      ];
+    } else if (this.failed) {
+      rows = [<li className="Marquee-status">{t('picker.unavailable', { source: sourceName(kind) })}</li>];
+    } else {
+      rows = this.results.map((r, i) => (
+        <li
+          id={`Marquee-result-${i}`}
+          role="option"
+          aria-selected={String(i === this.active)}
+          className={classList('Marquee-result', { active: i === this.active })}
+          onmousedown={(e) => (e.preventDefault(), this.pick(r))}
+          onmouseenter={() => (this.active = i)}
+        >
+          {r.poster ? <img src={img(r.poster, 'w92')} alt="" loading="lazy" /> : <span className="Marquee-noPoster" />}
+          <span>
+            <b>{r.title}</b>
+            <small>{[r.year, r.subtitle].filter(Boolean).join(' · ')}</small>
+          </span>
+        </li>
+      ));
+    }
 
     rows.push(
       <li className="Marquee-foot">
-        <span>{`Results from ${SOURCES[this.type()].source}`}</span>
-        <span>Esc keeps a plain title</span>
+        <span>{t('picker.results_from', { source: sourceName(kind) })}</span>
+        <span>{t('picker.escape_hint')}</span>
       </li>
     );
 
@@ -104,41 +111,89 @@ export default class TitlePicker extends Component {
     );
   }
 
-  type() {
-    return typeForTags(this.attrs.composer.fields.tags);
+  kind() {
+    return kindForTags(this.attrs.composer.fields.tags);
   }
 
   oninput(value) {
     const fields = this.attrs.composer.fields;
     fields.title(value);
-    fields.marquee = null;
-    this.active = 0;
     clearTimeout(this.timer);
-    this.timer = setTimeout(() => (this.find(), m.redraw()), 200);
+
+    // Once a title is linked, typing only edits the discussion title.
+    const kind = this.kind();
+    if (fields.marquee || !kind || value.trim().length < 2) {
+      this.results = [];
+      this.open = false;
+      return;
+    }
+
+    this.timer = setTimeout(() => this.find(kind, value.trim()), 300);
   }
 
-  find() {
-    const fields = this.attrs.composer.fields;
-    // No media tag chosen: a plain title field.
-    if (fields.marquee || !this.type()) return (this.results = []);
-    this.results = search(fields.title(), this.type());
+  find(kind, query) {
+    const seq = ++this.seq;
+    this.loading = true;
+    this.failed = false;
     this.open = true;
+    m.redraw();
+
+    search(kind, query).then(
+      (results) => {
+        if (seq !== this.seq) return;
+        this.results = results;
+        this.active = 0;
+        this.loading = false;
+        m.redraw();
+      },
+      () => {
+        if (seq !== this.seq) return;
+        this.results = [];
+        this.loading = false;
+        this.failed = true;
+        m.redraw();
+      }
+    );
   }
 
-  pick(item) {
+  pick(result) {
     const fields = this.attrs.composer.fields;
-    fields.title(label(item));
-    fields.marquee = { item };
+    const kind = this.kind();
+    const link = {
+      id: null,
+      kind,
+      externalId: result.id,
+      title: result.title,
+      year: result.year,
+      poster: result.poster,
+      seasons: null,
+      season: null,
+      episode: null,
+    };
+
+    fields.marquee = link;
+    fields.title(titleFor(link));
     this.open = false;
+    this.results = [];
+    this.seq++;
+
+    // Store it now: posting is then instant, and a show's seasons become pickable.
+    lookup(kind, result.id).then(
+      (media) => {
+        Object.assign(link, { id: media.id, seasons: media.seasons });
+        m.redraw();
+      },
+      () => {}
+    );
   }
 
   onkeydown(e) {
-    const open = this.type() && this.open && this.results.length;
+    const open = this.kind() && this.open && this.results.length;
 
     if (open && e.key === 'ArrowDown') this.active = (this.active + 1) % this.results.length;
     else if (open && e.key === 'ArrowUp') this.active = (this.active - 1 + this.results.length) % this.results.length;
     else if (open && e.key === 'Enter') this.pick(this.results[this.active]);
-    else if (open && e.key === 'Escape') this.open = false;
+    else if (this.open && e.key === 'Escape') this.open = false;
     else return this.attrs.onkeydown(e);
 
     e.preventDefault();

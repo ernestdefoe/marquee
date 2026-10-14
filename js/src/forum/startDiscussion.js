@@ -1,13 +1,12 @@
-import app from 'flarum/forum/app';
 import IndexSidebar from 'flarum/forum/components/IndexSidebar';
-import { SOURCES, label } from './fixtures';
+import { tagForKind, titleFor } from './util';
 
 let pending = null;
 
 /**
- * Open the composer already tagged, titled and linked to a show, season or
- * episode. The composer loads lazily and resets its fields, so the prefill is
- * applied when it is created (see applyPrefill).
+ * Open the composer already tagged, titled and linked. The composer loads
+ * lazily and starts with empty fields, so the prefill is applied when it is
+ * created (applyPrefill), before the tag picker would open.
  */
 export function startDiscussion(link) {
   pending = link;
@@ -16,11 +15,11 @@ export function startDiscussion(link) {
 
 export function applyPrefill(composer) {
   if (!pending) return;
-  const { item, season, episode } = pending;
+  const link = pending;
   pending = null;
 
-  const tag = app.store.all('tags').find((t) => t.slug() === SOURCES[item.type].tag);
+  const tag = tagForKind(link.kind);
   if (tag) composer.fields.tags = [tag];
-  composer.fields.title(label(item, season, episode));
-  composer.fields.marquee = { item, season, episode };
+  composer.fields.title(titleFor(link, link.season, link.episode));
+  composer.fields.marquee = link;
 }
