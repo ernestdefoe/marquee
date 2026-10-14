@@ -5,9 +5,20 @@ export const t = (key, params) => app.translator.trans(`ernestdefoe-marquee.foru
 export const text = (key, params) => extractText(t(key, params));
 
 const TMDB_IMAGES = 'https://image.tmdb.org/t/p/';
+const IGDB_IMAGES = 'https://images.igdb.com/igdb/image/upload/';
 
-/** A source image path at a given TMDB size (w92, w185, w342, w780, w1280). */
-export const img = (path, size) => (path ? TMDB_IMAGES + size + path : null);
+// The nearest IGDB size for each TMDB size used here (api-docs.igdb.com#images).
+const IGDB_SIZES = { w92: 'cover_small_2x', w185: 'thumb_2x', w300: 'screenshot_med', w342: 'cover_big_2x', w780: 'screenshot_big', w1280: '1080p' };
+
+/**
+ * An image URL at one of the TMDB sizes (w92, w185, w300, w342, w780, w1280).
+ * IGDB images are stored as `igdb:{image_id}` and mapped to IGDB's own sizes.
+ */
+export const img = (path, size) => {
+  if (!path) return null;
+  if (path.startsWith('igdb:')) return `${IGDB_IMAGES}t_${IGDB_SIZES[size] || 'cover_big'}/${path.slice(5)}.jpg`;
+  return TMDB_IMAGES + size + path;
+};
 
 export const pad = (n) => String(n).padStart(2, '0');
 

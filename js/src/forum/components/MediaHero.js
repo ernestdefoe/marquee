@@ -26,6 +26,39 @@ const years = (d) => {
   return d.status === 'Returning Series' ? `${d.year}–` : d.year;
 };
 
+const timeToBeat = (ttb) =>
+  ttb ? (
+    <div className="MarqueeHero-ttb">
+      <h4 className="MarqueeHero-sectionTitle">{t('hero.time_to_beat')}</h4>
+      <dl>
+        {['hastily', 'normally', 'completely']
+          .filter((key) => ttb[key])
+          .map((key) => (
+            <div>
+              <dt>{t(`hero.ttb_${key}`)}</dt>
+              <dd>{t('hero.hours', { count: ttb[key] })}</dd>
+            </div>
+          ))}
+      </dl>
+    </div>
+  ) : null;
+
+const screenshots = (list) =>
+  list && list.length ? (
+    <div>
+      <h4 className="MarqueeHero-sectionTitle">{t('hero.screenshots')}</h4>
+      <ul className="MarqueeHero-shots">
+        {list.map((shot) => (
+          <li>
+            <a href={img(shot, 'w1280')} target="_blank" rel="noopener noreferrer">
+              <img src={img(shot, 'w300')} alt="" loading="lazy" />
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  ) : null;
+
 /** What the hero is about: the whole title, one season, or one episode. */
 function subject(media, d, season, episode, seasonData) {
   const summary = season && (d.seasons || []).find((s) => s.number === season);
@@ -77,6 +110,33 @@ function subject(media, d, season, episode, seasonData) {
       ]),
       overview: d.overview,
       people: [t('hero.cast'), d.cast],
+      url: d.url,
+    };
+  }
+
+  if (media.kind() === 'game') {
+    return {
+      poster: d.poster,
+      backdrop: img(d.backdrop, 'w1280'),
+      meta: [date(d.date), d.modes.join(', '), d.genres.join(', ')],
+      score: [
+        ring(d.critic, t('hero.critic_rating'), 'critic'),
+        ring(d.users, t('hero.member_rating'), 'users'),
+        d.platforms.length ? (
+          <ul className="MarqueeHero-chips">
+            {d.platforms.map((p) => (
+              <li>{p}</li>
+            ))}
+          </ul>
+        ) : null,
+      ],
+      credits: credits([
+        [t('credits.developer'), d.crew.developer],
+        [t('credits.publisher'), d.crew.publisher],
+        [t('credits.series'), d.crew.series],
+      ]),
+      overview: d.overview,
+      extra: [timeToBeat(d.timeToBeat), screenshots(d.screenshots)],
       url: d.url,
     };
   }
@@ -176,6 +236,8 @@ export default class MediaHero extends Component {
             ) : null}
 
             {s.overview ? <p className="MarqueeHero-overview">{s.overview}</p> : null}
+
+            {s.extra || null}
 
             {s.people && s.people[1] && s.people[1].length ? (
               <div>

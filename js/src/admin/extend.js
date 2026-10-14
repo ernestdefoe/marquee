@@ -1,5 +1,6 @@
 import { Admin } from 'flarum/common/extenders';
 import app from 'flarum/admin/app';
+import extractText from 'flarum/common/utils/extractText';
 import TagSources from './TagSources';
 
 const t = (key, params) => app.translator.trans(`ernestdefoe-marquee.admin.${key}`, params);
@@ -24,6 +25,34 @@ export default [
         </div>
       );
     }, 100)
+    // Games: IGDB uses Twitch app credentials, exchanged on the server for a token.
+    .customSetting(function () {
+      return (
+        <div className="Form-group">
+          <label for="marquee-igdb-id">{t('igdb_label')}</label>
+          <div className="helpText">
+            {t('igdb_help', { a: <a href="https://dev.twitch.tv/console/apps" target="_blank" rel="noopener noreferrer" /> })}
+          </div>
+          <div className="MarqueeIgdbFields">
+            <input
+              id="marquee-igdb-id"
+              className="FormControl"
+              placeholder={extractText(t('igdb_client_id'))}
+              autocomplete="off"
+              bidi={this.setting('ernestdefoe-marquee.igdb_client_id')}
+            />
+            <input
+              className="FormControl"
+              type="password"
+              aria-label={extractText(t('igdb_client_secret'))}
+              placeholder={extractText(t('igdb_client_secret'))}
+              autocomplete="off"
+              bidi={this.setting('ernestdefoe-marquee.igdb_client_secret')}
+            />
+          </div>
+        </div>
+      );
+    }, 95)
     .setting(
       () => ({
         setting: 'ernestdefoe-marquee.language',

@@ -2,15 +2,15 @@
 
 namespace Ernestdefoe\Marquee\Source;
 
-/** Every source, by kind. Games (IGDB) join here once that source exists. */
+/** Every source, by kind. */
 class Sources
 {
     /** @var array<string, Source> */
     private array $sources;
 
-    public function __construct(TmdbMovies $movies, TmdbShows $shows)
+    public function __construct(TmdbMovies $movies, TmdbShows $shows, IgdbGames $games)
     {
-        foreach ([$movies, $shows] as $source) {
+        foreach ([$movies, $shows, $games] as $source) {
             $this->sources[$source->kind()] = $source;
         }
     }

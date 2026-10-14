@@ -2,6 +2,10 @@ ernestdefoe-marquee:
   admin:
     tmdb_token_label: TMDB API read access token
     tmdb_token_help: "Movies and TV shows come from The Movie Database. <a>Get a token from your TMDB API settings</a> and paste the long API Read Access Token here. It stays on the server."
+    igdb_label: Twitch app credentials for IGDB
+    igdb_help: "Games come from IGDB, which Twitch runs. <a>Register an app in the Twitch developer console</a> (client type Confidential), make a client secret, and paste both here. The secret stays on the server. IGDB is free for non-commercial forums; a commercial forum needs a partnership with IGDB."
+    igdb_client_id: Client ID
+    igdb_client_secret: Client secret
     language_label: Data language
     language_help: "The language TMDB returns titles and synopses in, as a language and region code such as en-US, fr-FR or pt-BR."
     tags_label: Which tags use which source
@@ -9,7 +13,7 @@ ernestdefoe-marquee:
     source_none: Normal discussion
     source_movie: Movies (TMDB)
     source_tv: TV shows (TMDB)
-    source_game: Games (IGDB, needs keys)
+    source_game: Games (IGDB)
 
   api:
     link_invalid: That title could not be linked. Pick it again from the list.
@@ -62,6 +66,9 @@ ernestdefoe-marquee:
       status: Status
       directed_by: Directed by
       written_by: Written by
+      developer: Developer
+      publisher: Publisher
+      series: Series
 
     hero:
       user_score: TMDB user score
@@ -75,6 +82,14 @@ ernestdefoe-marquee:
       trailer: Trailer
       episode_details: Episode details
       discuss_show: Discuss the whole show
+      critic_rating: Critic rating
+      member_rating: IGDB member rating
+      time_to_beat: How long to beat
+      ttb_hastily: Main story
+      ttb_normally: Main + extras
+      ttb_completely: Completionist
+      hours: "{count, plural, one {# hour} other {# hours}}"
+      screenshots: Screenshots
       attribution_tmdb: Data and images from TMDB. Not endorsed or certified by TMDB.
       attribution_igdb: Game data from IGDB.com
 
