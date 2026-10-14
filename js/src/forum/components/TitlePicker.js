@@ -24,7 +24,7 @@ export default class TitlePicker extends Component {
     const { composer, disabled } = this.attrs;
     const type = this.type();
     const placeholder = type ? SOURCES[type].placeholder : this.attrs.placeholder;
-    const open = this.open && this.results.length > 0;
+    const open = !!type && this.open && this.results.length > 0;
 
     return (
       <h3 className="Marquee-titleField">
@@ -128,12 +128,12 @@ export default class TitlePicker extends Component {
   pick(item) {
     const fields = this.attrs.composer.fields;
     fields.title(label(item));
-    fields.marquee = item;
+    fields.marquee = { item };
     this.open = false;
   }
 
   onkeydown(e) {
-    const open = this.open && this.results.length;
+    const open = this.type() && this.open && this.results.length;
 
     if (open && e.key === 'ArrowDown') this.active = (this.active + 1) % this.results.length;
     else if (open && e.key === 'ArrowUp') this.active = (this.active - 1 + this.results.length) % this.results.length;

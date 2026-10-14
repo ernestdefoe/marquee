@@ -1,6 +1,8 @@
 // Prototype sample data. The real build fetches this from TMDB / IGDB once,
 // when a discussion is posted, and stores it on the forum.
-const tmdb = (size, path) => `https://image.tmdb.org/t/p/${size}/${path}.jpg`;
+import { tmdb } from './tmdb';
+import TLOU_SEASONS from './fixtures-tlou';
+
 const steam = (app, file) => `https://cdn.cloudflare.steamstatic.com/steam/apps/${app}/${file}.jpg`;
 
 const person = (name, role, photo) => ({ name, role, photo: photo && tmdb('w185', photo) });
@@ -121,6 +123,7 @@ export const ITEMS = [
     overview:
       'Twenty years after modern civilization has been destroyed, Joel, a hardened survivor, is hired to smuggle Ellie, a 14-year-old girl, out of an oppressive quarantine zone. What starts as a small job soon becomes a brutal, heartbreaking journey.',
     url: 'https://www.themoviedb.org/tv/100088',
+    seasons: TLOU_SEASONS,
   },
   {
     id: 'igdb-elden-ring',
@@ -229,13 +232,34 @@ export const ITEMS = [
   },
 ];
 
-export const label = (item) => `${item.title} (${item.year})`;
+export const pad = (n) => String(n).padStart(2, '0');
 
-// Stand-in for the stored link: the real build keeps the item id on the discussion.
+/** The discussion title for a show, one of its seasons, or one episode. */
+export const label = (item, season, episode) => {
+  const base = `${item.title} (${item.year})`;
+  if (episode) return `${base} S${pad(season.number)}E${pad(episode.n)}: ${episode.title}`;
+  if (season) return `${base} Season ${season.number}`;
+  return base;
+};
+
+/**
+ * What a discussion is linked to: { item, season?, episode? }.
+ * Stand-in for the stored link: the real build keeps the ids on the discussion.
+ */
 export const forDiscussion = (discussion) => {
   const title = discussion?.title?.();
-  return title ? ITEMS.find((item) => label(item) === title) : undefined;
+  if (!title) return undefined;
+  for (const item of ITEMS) {
+    if (label(item) === title) return { item };
+    for (const season of item.seasons || []) {
+      if (label(item, season) === title) return { item, season };
+      const episode = season.episodes.find((e) => label(item, season, e) === title);
+      if (episode) return { item, season, episode };
+    }
+  }
 };
+
+export const episodeUrl = (item, season, episode) => `${item.url}/season/${season.number}/episode/${episode.n}`;
 
 // Stand-in for the forum's search endpoint.
 export const search = (query, type) => {
