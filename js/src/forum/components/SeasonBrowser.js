@@ -5,6 +5,7 @@ import classList from 'flarum/common/utils/classList';
 import EpisodeModal from './EpisodeModal';
 import { t, img, pad, date, runtime } from '../util';
 import { loadSeason } from '../api';
+import { seasonRequest } from '../refs';
 
 /**
  * A show's seasons inside the hero. Pick a season to list its episodes (fetched
@@ -34,6 +35,14 @@ export default class SeasonBrowser extends Component {
   }
 
   view() {
+    // A season chip in a post asked for this season.
+    if (seasonRequest.number && seasonRequest.number !== this.openNumber) {
+      const number = seasonRequest.number;
+      seasonRequest.number = null;
+      this.openNumber = null;
+      this.toggle(number);
+    }
+
     const { link, episode: current } = this.attrs;
     const season = this.data[this.openNumber];
 

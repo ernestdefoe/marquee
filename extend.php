@@ -1,6 +1,7 @@
 <?php
 
 use Ernestdefoe\Marquee\Api;
+use Ernestdefoe\Marquee\Formatter;
 use Ernestdefoe\Marquee\Media;
 use Ernestdefoe\Marquee\Settings;
 use Flarum\Api\Endpoint;
@@ -19,6 +20,9 @@ return [
         ->css(__DIR__.'/less/admin.less'),
 
     new Extend\Locales(__DIR__.'/locale'),
+
+    (new Extend\Formatter())
+        ->configure(Formatter\EpisodeReferences::class),
 
     (new Extend\Routes('api'))
         ->get('/marquee/search', 'marquee.search', Api\SearchController::class)

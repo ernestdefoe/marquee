@@ -14,6 +14,9 @@ import TitlePicker from './components/TitlePicker';
 import ScopePicker from './components/ScopePicker';
 import { t, img, pad, sourceName, kindForTags, linkFor, titleFor } from './util';
 import { applyPrefill } from './startDiscussion';
+import CommentPost from 'flarum/forum/components/CommentPost';
+import { decorate } from './refs';
+import { attachSuggest } from './suggest';
 
 app.initializers.add('ernestdefoe-marquee', () => {
   app.store.models['marquee-media'] = Media;
@@ -90,6 +93,19 @@ app.initializers.add('ernestdefoe-marquee', () => {
     if (link) {
       data.marquee = { kind: link.kind, id: link.externalId, season: link.season || null, episode: link.episode ? link.episode.n : null };
     }
+  });
+
+  // Season and episode references in posts become chips (TV discussions only).
+  extend(CommentPost.prototype, ['oncreate', 'onupdate'], function () {
+    decorate(this.element.querySelector('.Post-body'), this.attrs.post.discussion());
+  });
+
+  // …and the post editor suggests them as you type S2E.
+  extend('flarum/common/components/TextEditor', 'onbuild', function () {
+    this.marqueeSuggest = attachSuggest(this);
+  });
+  extend('flarum/common/components/TextEditor', 'buildEditorParams', function (params) {
+    params.inputListeners.push(() => this.marqueeSuggest && this.marqueeSuggest());
   });
 
   // Change or remove the link on a posted discussion: whoever may rename it.
