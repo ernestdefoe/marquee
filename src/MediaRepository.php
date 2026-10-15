@@ -3,6 +3,7 @@
 namespace Ernestdefoe\Marquee;
 
 use Carbon\Carbon;
+use Ernestdefoe\Marquee\Source\Outage;
 use Ernestdefoe\Marquee\Source\SeasonSource;
 use Ernestdefoe\Marquee\Source\SourceException;
 use Ernestdefoe\Marquee\Source\Sources;
@@ -17,7 +18,7 @@ class MediaRepository
     private const MEDIA_TTL_DAYS = 7;
     private const SEASON_TTL_DAYS = 3;
 
-    public function __construct(private Sources $sources)
+    public function __construct(private Sources $sources, private Outage $outage)
     {
     }
 
@@ -33,7 +34,7 @@ class MediaRepository
         $source = $this->sources->get($kind) ?? throw new SourceException("No source for $kind");
 
         try {
-            $data = $source->details($externalId);
+            $data = $this->outage->guard($kind, fn () => $source->details($externalId));
         } catch (SourceException $e) {
             // A stale copy beats no copy while the source is down.
             if ($media) {
@@ -71,7 +72,7 @@ class MediaRepository
         }
 
         try {
-            $data = $source->season($media->external_id, $number);
+            $data = $this->outage->guard($media->kind, fn () => $source->season($media->external_id, $number));
         } catch (SourceException $e) {
             if ($season) {
                 return $season;

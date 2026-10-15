@@ -2,6 +2,7 @@
 
 namespace Ernestdefoe\Marquee\Api;
 
+use Ernestdefoe\Marquee\Source\Outage;
 use Ernestdefoe\Marquee\Source\SourceException;
 use Ernestdefoe\Marquee\Source\Sources;
 use Flarum\Http\RequestUtil;
@@ -17,7 +18,7 @@ class SearchController implements RequestHandlerInterface
 {
     use Throttle;
 
-    public function __construct(private Sources $sources, private Cache $cache)
+    public function __construct(private Sources $sources, private Cache $cache, private Outage $outage)
     {
     }
 
@@ -43,7 +44,7 @@ class SearchController implements RequestHandlerInterface
             $results = $this->cache->remember(
                 'marquee.search.'.$source->kind().'.'.md5(mb_strtolower($query)),
                 86400,
-                fn () => $source->search($query)
+                fn () => $this->outage->guard($source->kind(), fn () => $source->search($query))
             );
         } catch (SourceException) {
             return new JsonResponse(['errors' => [['status' => '502', 'code' => 'source_unavailable']]], 502);

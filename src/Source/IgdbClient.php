@@ -55,7 +55,8 @@ class IgdbClient
             } elseif ($status === 429) {
                 usleep(400000);
             } else {
-                throw new SourceException("IGDB rejected the $endpoint query ($status)", 0, $e);
+                // A 4xx is about this query, not an outage (see Outage).
+                throw new SourceException("IGDB rejected the $endpoint query ($status)");
             }
         } catch (GuzzleException $e) {
             throw new SourceException("IGDB request failed: $endpoint", 0, $e);
