@@ -68,7 +68,7 @@ export default class EpisodeModal extends Modal {
             <ul className="MarqueeEpisode-guests">
               {e.guests.map((g) => (
                 <li>
-                  {g.photo ? <img src={img(g.photo, 'w185')} alt="" loading="lazy" /> : <span className="Marquee-noPhoto" />}
+                  {g.photo ? <img src={img(g.photo, 'w185')} alt="" loading="lazy" decoding="async" /> : <span className="Marquee-noPhoto" />}
                   <span>
                     <b>{g.name}</b>
                     <small>{g.role}</small>

@@ -50,7 +50,7 @@ export default class SeasonBrowser extends Component {
                 className={classList('MarqueeSeasons-season', { active: s.number === this.openNumber })}
                 onclick={() => this.toggle(s.number)}
               >
-                {s.poster ? <img src={img(s.poster, 'w92')} alt="" loading="lazy" /> : <span className="Marquee-noPoster" />}
+                {s.poster ? <img src={img(s.poster, 'w92')} alt="" loading="lazy" decoding="async" /> : <span className="Marquee-noPoster" />}
                 <span>
                   <b>{s.name}</b>
                   <small>{[s.year, t('meta.episodes_count', { count: s.episodes })].filter(Boolean).map((p, i) => [i ? ' · ' : '', p])}</small>
@@ -80,7 +80,7 @@ export default class SeasonBrowser extends Component {
                       className={classList('MarqueeSeasons-episode', { current: season.number === this.attrs.season && e.n === current })}
                       onclick={() => app.modal.show(EpisodeModal, { link, season, episode: e })}
                     >
-                      {e.still ? <img src={img(e.still, 'w300')} alt="" loading="lazy" /> : <span className="Marquee-noStill" />}
+                      {e.still ? <img src={img(e.still, 'w300')} alt="" loading="lazy" decoding="async" /> : <span className="Marquee-noStill" />}
                       <span>
                         <b>
                           <em>E{pad(e.n)}</em> {e.title}

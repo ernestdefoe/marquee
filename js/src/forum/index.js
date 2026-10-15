@@ -93,7 +93,7 @@ app.initializers.add('ernestdefoe-marquee', () => {
     items.add(
       'marqueePoster',
       <Link className="Marquee-listPoster" href={app.route.discussion(discussion)} tabindex="-1" aria-hidden="true">
-        <img src={img(link.media.poster(), 'w92')} alt="" loading="lazy" />
+        <img src={img(link.media.poster(), 'w92')} alt="" loading="lazy" decoding="async" />
       </Link>,
       95
     );

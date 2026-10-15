@@ -51,7 +51,7 @@ const screenshots = (list) =>
         {list.map((shot) => (
           <li>
             <a href={img(shot, 'w1280')} target="_blank" rel="noopener noreferrer">
-              <img src={img(shot, 'w300')} alt="" loading="lazy" />
+              <img src={img(shot, 'w300')} alt="" loading="lazy" decoding="async" />
             </a>
           </li>
         ))}
@@ -245,7 +245,7 @@ export default class MediaHero extends Component {
                 <ul className="MarqueeHero-cast">
                   {s.people[1].map((c) => (
                     <li>
-                      {c.photo ? <img src={img(c.photo, 'w185')} alt="" loading="lazy" /> : <span className="Marquee-noPhoto" />}
+                      {c.photo ? <img src={img(c.photo, 'w185')} alt="" loading="lazy" decoding="async" /> : <span className="Marquee-noPhoto" />}
                       <b>{c.name}</b>
                       <span>{c.role}</span>
                     </li>

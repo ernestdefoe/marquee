@@ -88,7 +88,7 @@ export default class TitlePicker extends Component {
           onmousedown={(e) => (e.preventDefault(), this.pick(r))}
           onmouseenter={() => (this.active = i)}
         >
-          {r.poster ? <img src={img(r.poster, 'w92')} alt="" loading="lazy" /> : <span className="Marquee-noPoster" />}
+          {r.poster ? <img src={img(r.poster, 'w92')} alt="" loading="lazy" decoding="async" /> : <span className="Marquee-noPoster" />}
           <span>
             <b>{r.title}</b>
             <small>{[r.year, r.subtitle].filter(Boolean).join(' · ')}</small>
