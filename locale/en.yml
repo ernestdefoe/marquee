@@ -53,6 +53,7 @@ ernestdefoe-marquee:
     meta:
       runtime_hours: "{hours}h {minutes}m"
       runtime_minutes: "{minutes}m"
+      runtime_hours_only: "{hours}h"
       seasons_count: "{count, plural, one {# season} other {# seasons}}"
       episodes_count: "{count, plural, one {# episode} other {# episodes}}"
       season_episode: "Season {season}, Episode {episode}"

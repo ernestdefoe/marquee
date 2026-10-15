@@ -1,6 +1,6 @@
 {
     "name": "ernestdefoe/marquee",
-    "description": "Link discussions to movies, TV shows (down to the episode) and games, shown in the discussion hero. Data from TMDB.",
+    "description": "Link discussions to movies, TV shows (down to the episode) and games, shown in the discussion hero. Data from TMDB and IGDB.",
     "type": "flarum-extension",
     "license": "MIT",
     "version": "0.0.1",

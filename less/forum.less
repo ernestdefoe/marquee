@@ -262,8 +262,14 @@
     }
 
     &-meta {
+      gap: 2px 12px;
       margin-bottom: 0;
       font-size: 12px;
+
+      // Separators strand at line starts once the line wraps; the gap does the work.
+      li + li::before {
+        content: none;
+      }
     }
 
     &-scores {
@@ -558,6 +564,14 @@
   }
 
   @media (max-width: 767px) {
+    &-list li {
+      flex: 1 1 100%;
+    }
+
+    &-season {
+      width: 100%;
+    }
+
     &-episode {
       grid-template-columns: 96px minmax(0, 1fr);
       gap: 10px;

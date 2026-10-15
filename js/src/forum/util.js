@@ -25,6 +25,7 @@ export const pad = (n) => String(n).padStart(2, '0');
 export const runtime = (minutes) => {
   if (!minutes) return null;
   if (minutes < 60) return text('meta.runtime_minutes', { minutes });
+  if (minutes % 60 === 0) return text('meta.runtime_hours_only', { hours: minutes / 60 });
   return text('meta.runtime_hours', { hours: Math.floor(minutes / 60), minutes: minutes % 60 });
 };
 
