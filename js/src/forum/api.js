@@ -5,7 +5,7 @@ const quiet = () => {};
 
 export const search = (kind, q) => app.request({ method: 'GET', url: url('search'), params: { kind, q }, errorHandler: quiet }).then((r) => r.data);
 
-export const lookup = (kind, id) => app.request({ method: 'GET', url: url('media'), params: { kind, id }, errorHandler: quiet }).then((r) => r.data);
+export const lookup = (kind, id) => app.request({ method: 'POST', url: url('media'), body: { kind, id }, errorHandler: quiet }).then((r) => r.data);
 
 const seasons = new Map();
 

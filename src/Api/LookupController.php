@@ -15,7 +15,8 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 /**
  * The picked title, stored and summarised for the composer (its seasons, for a
- * show): GET /marquee/media?kind=tv&id=100088
+ * show): POST /marquee/media {kind, id}. POST because it stores the title: a GET
+ * could be triggered from another site by an <img>, POST needs Flarum's CSRF token.
  */
 class LookupController implements RequestHandlerInterface
 {
@@ -31,8 +32,9 @@ class LookupController implements RequestHandlerInterface
         $actor->assertRegistered();
         $actor->assertCan('startDiscussion');
 
-        $kind = (string) Arr::get($request->getQueryParams(), 'kind');
-        $id = (string) Arr::get($request->getQueryParams(), 'id');
+        $body = (array) $request->getParsedBody();
+        $kind = (string) Arr::get($body, 'kind');
+        $id = (string) Arr::get($body, 'id');
 
         if (! $this->sources->get($kind) || ! preg_match('/^[A-Za-z0-9_-]{1,64}$/', $id)) {
             return new JsonResponse(['errors' => [['status' => '422', 'code' => 'validation_error']]], 422);

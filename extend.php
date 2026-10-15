@@ -22,7 +22,7 @@ return [
 
     (new Extend\Routes('api'))
         ->get('/marquee/search', 'marquee.search', Api\SearchController::class)
-        ->get('/marquee/media', 'marquee.lookup', Api\LookupController::class)
+        ->post('/marquee/media', 'marquee.lookup', Api\LookupController::class)
         ->get('/marquee/media/{id:\d+}/seasons/{number:\d+}', 'marquee.season', Api\SeasonController::class),
 
     (new Extend\Model(Discussion::class))
