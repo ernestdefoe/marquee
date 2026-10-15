@@ -719,6 +719,20 @@
 }
 
 // ---- Composer: season / episode --------------------------------------------
+// Header items sit on the text baseline, which puts the select lower than the chip.
+.ComposerBody-header > .item-marquee,
+.ComposerBody-header > .item-marqueeScope {
+  vertical-align: middle;
+
+  > span {
+    vertical-align: top;
+  }
+}
+
+.ComposerBody-header > .item-marqueeScope {
+  margin-left: 6px;
+}
+
 .Marquee-scope {
   display: inline-flex;
   flex-wrap: wrap;
