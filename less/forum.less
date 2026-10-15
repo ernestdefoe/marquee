@@ -843,3 +843,56 @@
     }
   }
 }
+
+// ---- Change-link window ----------------------------------------------------
+.MarqueeLinkModal {
+  // Form groups are flex columns in Flarum 2, which shrink children to fit.
+  .Marquee-titleField {
+    align-self: stretch;
+    margin: 0;
+
+    .FormControl {
+      width: 100%;
+    }
+  }
+
+  .Marquee-results.Dropdown-menu {
+    position: static;
+    margin-top: 6px;
+    box-shadow: none;
+    border: 1px solid var(--control-bg);
+  }
+
+  .Marquee-scope .FormControl {
+    max-width: 100%;
+  }
+}
+
+.MarqueeLinkModal-current {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  img,
+  .Marquee-noPoster {
+    width: 40px;
+    height: 60px;
+    flex: none;
+    object-fit: cover;
+    border-radius: 4px;
+  }
+
+  span {
+    flex: 1;
+    min-width: 0;
+  }
+
+  b,
+  small {
+    display: block;
+  }
+
+  small {
+    color: var(--muted-color);
+  }
+}

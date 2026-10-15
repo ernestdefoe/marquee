@@ -1,13 +1,17 @@
 import Component from 'flarum/common/Component';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import classList from 'flarum/common/utils/classList';
-import { t, text, img, sourceName, kindForTags, titleFor } from '../util';
+import { t, text, img, sourceName } from '../util';
 import { search, lookup } from '../api';
 
 /**
- * The discussion title input. Under a tag linked to a source it searches that
- * source and offers a dropdown of matches; under any other tag, or none, it is
- * the normal title field.
+ * A title input that, given a `kind`, searches that source and offers a
+ * dropdown of matches; without one it is a plain input. Used for the composer's
+ * discussion title and in the change-link window.
+ *
+ * Attrs: value, oninput(value), kind, linked (stop searching), onpick(link),
+ * onkeydown (keys the list does not use), placeholder, disabled, inputClassName,
+ * focusOnKind (move the cursor here once a kind appears), wrapper (element, default h3).
  */
 export default class TitlePicker extends Component {
   oninit(vnode) {
@@ -21,15 +25,17 @@ export default class TitlePicker extends Component {
   }
 
   view() {
-    const { composer, disabled } = this.attrs;
+    const { disabled } = this.attrs;
     const kind = this.kind();
     const open = !!kind && this.open && (this.loading || this.failed || this.results.length > 0);
 
+    const Tag = this.attrs.wrapper || 'h3';
+
     return (
-      <h3 className="Marquee-titleField">
+      <Tag className="Marquee-titleField">
         <input
-          className="FormControl DiscussionComposer-title"
-          value={composer.fields.title()}
+          className={classList('FormControl', this.attrs.inputClassName)}
+          value={this.attrs.value}
           placeholder={kind ? text(`picker.placeholder_${kind}`) : this.attrs.placeholder}
           disabled={disabled}
           role={kind ? 'combobox' : undefined}
@@ -43,7 +49,7 @@ export default class TitlePicker extends Component {
           onblur={() => setTimeout(() => ((this.open = false), m.redraw()), 150)}
         />
         {open ? this.dropdown(kind) : null}
-      </h3>
+      </Tag>
     );
   }
 
@@ -53,7 +59,7 @@ export default class TitlePicker extends Component {
     // Once a sourced tag is chosen, put the cursor in the search box. The tag
     // modal focuses the post body as it closes, so wait for it.
     const kind = this.kind();
-    if (kind && kind !== this.lastKind && !this.attrs.composer.fields.title()) {
+    if (this.attrs.focusOnKind && kind && kind !== this.lastKind && !this.attrs.value) {
       setTimeout(() => this.element.querySelector('input')?.focus(), 50);
     }
     this.lastKind = kind;
@@ -112,17 +118,16 @@ export default class TitlePicker extends Component {
   }
 
   kind() {
-    return kindForTags(this.attrs.composer.fields.tags);
+    return this.attrs.kind;
   }
 
   oninput(value) {
-    const fields = this.attrs.composer.fields;
-    fields.title(value);
+    this.attrs.oninput(value);
     clearTimeout(this.timer);
 
-    // Once a title is linked, typing only edits the discussion title.
+    // Once a title is linked, typing only edits the text.
     const kind = this.kind();
-    if (fields.marquee || !kind || value.trim().length < 2) {
+    if (this.attrs.linked || !kind || value.trim().length < 2) {
       this.results = [];
       this.open = false;
       return;
@@ -157,7 +162,6 @@ export default class TitlePicker extends Component {
   }
 
   pick(result) {
-    const fields = this.attrs.composer.fields;
     const kind = this.kind();
     const link = {
       id: null,
@@ -171,8 +175,7 @@ export default class TitlePicker extends Component {
       episode: null,
     };
 
-    fields.marquee = link;
-    fields.title(titleFor(link));
+    this.attrs.onpick(link);
     this.open = false;
     this.results = [];
     this.seq++;
@@ -194,7 +197,7 @@ export default class TitlePicker extends Component {
     else if (open && e.key === 'ArrowUp') this.active = (this.active - 1 + this.results.length) % this.results.length;
     else if (open && e.key === 'Enter') this.pick(this.results[this.active]);
     else if (this.open && e.key === 'Escape') this.open = false;
-    else return this.attrs.onkeydown(e);
+    else return this.attrs.onkeydown && this.attrs.onkeydown(e);
 
     e.preventDefault();
     e.stopPropagation();

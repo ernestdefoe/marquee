@@ -5,11 +5,14 @@ import Discussion from 'flarum/common/models/Discussion';
 import DiscussionHero from 'flarum/forum/components/DiscussionHero';
 import DiscussionListItem from 'flarum/forum/components/DiscussionListItem';
 import Link from 'flarum/common/components/Link';
+import Button from 'flarum/common/components/Button';
+import DiscussionControls from 'flarum/forum/utils/DiscussionControls';
+import LinkModal from './components/LinkModal';
 import Media from './models';
 import MediaHero from './components/MediaHero';
 import TitlePicker from './components/TitlePicker';
 import ScopePicker from './components/ScopePicker';
-import { t, img, pad, sourceName, kindForTags, linkFor } from './util';
+import { t, img, pad, sourceName, kindForTags, linkFor, titleFor } from './util';
 import { applyPrefill } from './startDiscussion';
 
 app.initializers.add('ernestdefoe-marquee', () => {
@@ -41,10 +44,19 @@ app.initializers.add('ernestdefoe-marquee', () => {
     items.setContent(
       'discussionTitle',
       <TitlePicker
-        composer={this.composer}
+        value={fields.title()}
+        oninput={(value) => fields.title(value)}
+        kind={kindForTags(fields.tags)}
+        linked={!!fields.marquee}
+        onpick={(picked) => {
+          fields.marquee = picked;
+          fields.title(titleFor(picked));
+        }}
+        onkeydown={this.onkeydown.bind(this)}
         placeholder={this.attrs.titlePlaceholder}
         disabled={!!this.attrs.disabled}
-        onkeydown={this.onkeydown.bind(this)}
+        inputClassName="DiscussionComposer-title"
+        focusOnKind
       />
     );
 
@@ -68,7 +80,9 @@ app.initializers.add('ernestdefoe-marquee', () => {
       -10
     );
 
-    if (link.seasons && link.seasons.length) items.add('marqueeScope', <ScopePicker composer={this.composer} />, -20);
+    if (link.seasons && link.seasons.length) {
+      items.add('marqueeScope', <ScopePicker link={link} onchange={(l) => fields.title(titleFor(l, l.season, l.episode))} />, -20);
+    }
   });
 
   extend('flarum/forum/components/DiscussionComposer', 'data', function (data) {
@@ -78,11 +92,28 @@ app.initializers.add('ernestdefoe-marquee', () => {
     }
   });
 
+  // Change or remove the link on a posted discussion: whoever may rename it.
+  extend(DiscussionControls, 'moderationControls', function (items, discussion) {
+    if (!discussion.canRename() || !(kindForTags(discussion.tags()) || linkFor(discussion))) return;
+
+    items.add(
+      'marquee',
+      <Button icon="fas fa-film" onclick={() => app.modal.show(LinkModal, { discussion })}>
+        {t(linkFor(discussion) ? 'link.change' : 'link.add')}
+      </Button>,
+      -10
+    );
+  });
+
   // The full card needs the details the discussion page loads; until they
   // arrive (or for a discussion with no link) the normal hero shows.
   override(DiscussionHero.prototype, 'view', function (original) {
     const link = linkFor(this.attrs.discussion);
-    return link && link.media.details() ? <MediaHero key={link.media.id()} discussion={this.attrs.discussion} link={link} /> : original();
+    return link && link.media.details() ? (
+      <MediaHero key={[link.media.id(), link.season, link.episode].join(':')} discussion={this.attrs.discussion} link={link} />
+    ) : (
+      original()
+    );
   });
 
   extend(DiscussionListItem.prototype, 'authorItems', function (items) {

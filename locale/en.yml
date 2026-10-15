@@ -102,6 +102,17 @@ ernestdefoe-marquee:
       next: Next
       discuss_episode: Discuss this episode
 
+    link:
+      change: Change linked title
+      add: Link a title
+      title: Linked title
+      none: This discussion isn't linked to a title.
+      remove: Remove
+      search_label: Find a different title
+      rename: "Rename the discussion to {title}"
+      save: Save
+      saved: The linked title was updated.
+
     list:
       season: "Season {number}"
       episode: "S{season}E{episode}"

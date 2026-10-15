@@ -37,11 +37,11 @@ class DiscussionFields
                 ->nullable()
                 ->get(fn (Discussion $d) => $d->marquee_episode),
 
-            // The linked season's episodes, on the discussion page only, so the
-            // hero needs no second request. One query, and only when linked.
+            // The linked season's episodes, on the discussion page (and after an
+            // edit to it) only, so the hero needs no second request.
             Schema\Arr::make('marqueeSeasonData')
                 ->nullable()
-                ->visible(fn (Discussion $d, Context $context) => $d->marquee_season && $context->showing(DiscussionResource::class))
+                ->visible(fn (Discussion $d, Context $context) => $d->marquee_season && ($context->showing(DiscussionResource::class) || $context->updating(DiscussionResource::class)))
                 ->get(fn (Discussion $d) => Season::query()
                     ->where('media_id', $d->marquee_media_id)
                     ->where('number', $d->marquee_season)

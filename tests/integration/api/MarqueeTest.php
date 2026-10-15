@@ -148,6 +148,37 @@ class MarqueeTest extends TestCase
     }
 
     #[Test]
+    public function the_link_can_be_changed_and_the_reply_carries_the_details(): void
+    {
+        $response = $this->send($this->request('PATCH', '/api/discussions/2', [
+            'authenticatedAs' => 1,
+            'json' => ['data' => ['type' => 'discussions', 'id' => '2', 'attributes' => ['marquee' => ['kind' => 'tv', 'id' => '1396', 'season' => 1, 'episode' => null]]]],
+        ]));
+
+        $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $body = $this->json($response);
+        $this->assertSame(1, $body['data']['attributes']['marqueeSeason']);
+        $this->assertNull($body['data']['attributes']['marqueeEpisode']);
+
+        // The page swaps the hero from this reply, so the details must be in it.
+        $media = array_values(array_filter($body['included'] ?? [], fn ($i) => $i['type'] === 'marquee-media'));
+        $this->assertSame('Breaking Bad', $media[0]['attributes']['details']['title']);
+        $this->assertSame('Pilot', $body['data']['attributes']['marqueeSeasonData']['episodes'][0]['title']);
+    }
+
+    #[Test]
+    public function the_link_can_be_removed(): void
+    {
+        $response = $this->send($this->request('PATCH', '/api/discussions/1', [
+            'authenticatedAs' => 1,
+            'json' => ['data' => ['type' => 'discussions', 'id' => '1', 'attributes' => ['marquee' => null]]],
+        ]));
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertNull(Discussion::find(1)->marquee_media_id);
+    }
+
+    #[Test]
     public function details_travel_with_the_discussion_page_not_the_list(): void
     {
         $list = $this->json($this->send($this->request('GET', '/api/discussions')));

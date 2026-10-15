@@ -111,6 +111,17 @@ await page.evaluate(() => {
   app.composer.fields.marquee = null;
   app.composer.hide();
 });
+// The change-link window, from the discussion's controls menu.
+await go('/d/12');
+await page.click('.DiscussionPage [aria-label="Toggle discussion actions dropdown menu"]');
+await sleep(400);
+await page.evaluate(() => [...document.querySelectorAll('.Dropdown-menu button')].find((b) => /Change linked title/.test(b.textContent))?.click());
+await page.waitForSelector('.MarqueeLinkModal');
+await settle(1200);
+await shot('change-link.png');
+await page.keyboard.press('Escape');
+await sleep(500);
+
 await go('/admin#/extension/ernestdefoe-marquee');
 await page.waitForSelector('#marquee-tmdb-token');
 await settle();

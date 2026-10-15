@@ -14,6 +14,7 @@ A [Flarum 2](https://flarum.org) extension that links a discussion to a movie, a
 - **TV down to the episode.** Link a discussion to a whole show, one season, or one episode. Every show's card lists its seasons; open a season to see its episodes, and open an episode for its still, air date, runtime, score, director, writers, guest stars and synopsis, with previous and next buttons. **Discuss this episode** starts a discussion already titled and linked.
 - **Games.** Critic and member ratings, platforms, developer, publisher, series, how long it takes to beat (main story, main plus extras, completionist) and screenshots.
 - **Posters in the discussion list,** with the title's year, or the season and episode, under each discussion.
+- **Change it later.** Anyone who can rename a discussion gets **Change linked title** in its controls menu: pick a different title, a different season or episode, or remove the link, and optionally rename the discussion to match.
 - **Works on any theme.** Built and tested on Flarum's default theme and [Bespoke](https://github.com/ernestdefoe/bespoke). The card keeps the core header's classes, so themes that style the header still apply where it makes sense.
 - **Translatable.** Every word on screen comes from the language files, and the language TMDB answers in is a setting.
 
@@ -26,6 +27,10 @@ A [Flarum 2](https://flarum.org) extension that links a discussion to a movie, a
 ![Seasons and their episodes](https://raw.githubusercontent.com/ernestdefoe/marquee/main/.github/screenshots/season-browser.jpg)
 
 ![One episode's details](https://raw.githubusercontent.com/ernestdefoe/marquee/main/.github/screenshots/episode-details.jpg)
+
+### Changing the linked title
+
+![Changing what a discussion is linked to](https://raw.githubusercontent.com/ernestdefoe/marquee/main/.github/screenshots/change-link.png)
 
 ### Games
 
@@ -72,7 +77,7 @@ php flarum cache:clear
 - **Lean on every page.** The discussion list adds one database query in total, however many linked discussions it shows, and sends only each title's name, year and poster. The full details travel only with the discussion that shows them.
 - **Searches are cached and capped.** Each search is kept for a day, so ten members typing the same title cost one call. Each member is limited to 40 searches a minute, and IGDB calls are paced to stay under its limit of four a second.
 - **Your keys stay on the server.** The TMDB token and the Twitch secret are never sent to browsers. Searches go through your forum.
-- **Who can link.** Anyone who can start discussions. Changing or removing the link on an existing discussion takes the same permission as renaming it.
+- **Who can link.** Anyone who can start discussions. Changing or removing the link on an existing discussion (**Change linked title** in its controls menu) takes the same permission as renaming it.
 
 ## Data, attribution and licensing
 

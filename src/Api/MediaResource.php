@@ -38,7 +38,7 @@ class MediaResource extends AbstractDatabaseResource
             Schema\Integer::make('year')->nullable(),
             Schema\Str::make('poster')->nullable(),
             Schema\Arr::make('details')
-                ->visible(fn (Media $m, Context $context) => $context->showing(DiscussionResource::class))
+                ->visible(fn (Media $m, Context $context) => $context->showing(DiscussionResource::class) || $context->updating(DiscussionResource::class))
                 ->get(fn (Media $m) => $m->data),
         ];
     }

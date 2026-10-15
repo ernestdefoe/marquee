@@ -1,15 +1,14 @@
 import Component from 'flarum/common/Component';
-import { text, pad, titleFor } from '../util';
+import { text, pad } from '../util';
 import { loadSeason } from '../api';
 
 /**
- * For a show: narrow the discussion to one season, or one episode of it.
- * Changing either rewrites the title to match.
+ * For a show: narrow a link to one season, or one episode of it.
+ * Attrs: link (changed in place), onchange(link).
  */
 export default class ScopePicker extends Component {
   view() {
-    const fields = this.attrs.composer.fields;
-    const link = fields.marquee;
+    const link = this.attrs.link;
     const seasonData = this.seasonData?.number === link.season ? this.seasonData : null;
 
     if (link.season && !seasonData && link.id) this.load(link.id, link.season);
@@ -59,14 +58,12 @@ export default class ScopePicker extends Component {
   }
 
   setSeason(number) {
-    const fields = this.attrs.composer.fields;
-    Object.assign(fields.marquee, { season: number, episode: null });
-    fields.title(titleFor(fields.marquee, number));
+    Object.assign(this.attrs.link, { season: number, episode: null });
+    this.attrs.onchange(this.attrs.link);
   }
 
   setEpisode(episode) {
-    const fields = this.attrs.composer.fields;
-    fields.marquee.episode = episode;
-    fields.title(titleFor(fields.marquee, fields.marquee.season, episode));
+    this.attrs.link.episode = episode;
+    this.attrs.onchange(this.attrs.link);
   }
 }
