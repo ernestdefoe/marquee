@@ -127,7 +127,7 @@ export function attachSuggest(editor) {
           .slice(0, 8)
           .map((e) => ({
             insert: `S${pad(season.number)}E${pad(e.n)}`,
-            label: `E${pad(e.n)} · ${e.title}`,
+            label: text('meta.episode_label', { episode: pad(e.n), name: e.title }),
             detail: [date(e.date), runtime(e.runtime)].filter(Boolean).join(' · '),
             image: img(e.still, 'w300'),
           }));

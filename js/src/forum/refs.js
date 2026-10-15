@@ -101,9 +101,7 @@ function preview(el, link, season, episode) {
     show([
       ep.still ? <img src={img(ep.still, 'w300')} alt="" className="MarqueeRefPreview-still" /> : null,
       <span>
-        <b>
-          S{pad(season.number)}E{pad(ep.n)} · {ep.title}
-        </b>
+        <b>{text('meta.full_episode_label', { season: pad(season.number), episode: pad(ep.n), name: ep.title })}</b>
         <small>{[date(ep.date), ep.score ? `★ ${ep.score}%` : null].filter(Boolean).join(' · ')}</small>
       </span>,
     ]);

@@ -63,6 +63,9 @@ ernestdefoe-marquee:
       seasons_count: "{count, plural, one {# season} other {# seasons}}"
       episodes_count: "{count, plural, one {# episode} other {# episodes}}"
       season_episode: "Season {season}, Episode {episode}"
+      episode_code: "E{episode}"
+      episode_label: "E{episode} · {name}"
+      full_episode_label: "S{season}E{episode} · {name}"
       tracks_count: "{count, plural, one {# track} other {# tracks}}"
       record_album: Album
       record_single: Single

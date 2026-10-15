@@ -92,7 +92,7 @@ export default class SeasonBrowser extends Component {
                       {e.still ? <img src={img(e.still, 'w300')} alt="" loading="lazy" decoding="async" /> : <span className="Marquee-noStill" />}
                       <span>
                         <b>
-                          <em>E{pad(e.n)}</em> {e.title}
+                          <em>{t('meta.episode_code', { episode: pad(e.n) })}</em> {e.title}
                         </b>
                         <small>
                           {[date(e.date), runtime(e.runtime)].filter(Boolean).join(' · ')}
