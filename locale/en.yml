@@ -103,6 +103,7 @@ ernestdefoe-marquee:
       cast: Cast
       guest_stars: Guest stars
       seasons: Seasons
+      this_discussion: This discussion
       season_failed: This season could not be loaded right now.
       view_on: "View on {source}"
       trailer: Trailer

@@ -103,6 +103,7 @@ ernestdefoe-marquee:
       cast: Distribution
       guest_stars: Invités
       seasons: Saisons
+      this_discussion: Cette discussion
       season_failed: Cette saison n'a pas pu être chargée pour le moment.
       view_on: "Voir sur {source}"
       trailer: Bande-annonce
