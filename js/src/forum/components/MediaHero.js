@@ -30,7 +30,7 @@ const years = (d) => {
 const timeToBeat = (ttb) =>
   ttb ? (
     <div className="MarqueeHero-ttb">
-      <h4 className="MarqueeHero-sectionTitle">{t('hero.time_to_beat')}</h4>
+      <h2 className="MarqueeHero-sectionTitle">{t('hero.time_to_beat')}</h2>
       <dl>
         {['hastily', 'normally', 'completely']
           .filter((key) => ttb[key])
@@ -47,7 +47,7 @@ const timeToBeat = (ttb) =>
 const screenshots = (list) =>
   list && list.length ? (
     <div>
-      <h4 className="MarqueeHero-sectionTitle">{t('hero.screenshots')}</h4>
+      <h2 className="MarqueeHero-sectionTitle">{t('hero.screenshots')}</h2>
       <ul className="MarqueeHero-shots">
         {list.map((shot) => (
           <li>
@@ -65,7 +65,7 @@ const clock = (seconds) => `${Math.floor(seconds / 60)}:${String(seconds % 60).p
 const tracklist = (tracks) =>
   tracks && tracks.length ? (
     <div>
-      <h4 className="MarqueeHero-sectionTitle">{t('hero.tracklist')}</h4>
+      <h2 className="MarqueeHero-sectionTitle">{t('hero.tracklist')}</h2>
       <ol className="MarqueeTracks">
         {tracks.map((track) => (
           <li>
@@ -336,7 +336,7 @@ export default class MediaHero extends Component {
 
             {s.people && s.people[1] && s.people[1].length ? (
               <div>
-                <h4 className="MarqueeHero-sectionTitle">{s.people[0]}</h4>
+                <h2 className="MarqueeHero-sectionTitle">{s.people[0]}</h2>
                 <ul className="MarqueeHero-cast">
                   {s.people[1].map((c) => (
                     <li>
