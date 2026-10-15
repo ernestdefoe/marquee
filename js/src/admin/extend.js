@@ -59,9 +59,18 @@ export default [
         type: 'text',
         label: t('language_label'),
         help: t('language_help'),
-        placeholder: 'en-US',
+        placeholder: t('language_placeholder'),
       }),
       90
+    )
+    .setting(
+      () => ({
+        setting: 'ernestdefoe-marquee.list_posters',
+        type: 'switch',
+        label: t('list_posters_label'),
+        help: t('list_posters_help'),
+      }),
+      85
     )
     .customSetting(function () {
       return <TagSources stream={this.setting('ernestdefoe-marquee.tags', '{}')} />;

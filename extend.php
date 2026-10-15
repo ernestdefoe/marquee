@@ -48,6 +48,7 @@ return [
         ->fields(Api\ForumFields::class),
 
     (new Extend\Settings())
-        ->default(Settings::LANGUAGE, 'en-US')
+        ->default(Settings::LANGUAGE, '')
+        ->default(Settings::LIST_POSTERS, true)
         ->default(Settings::TAGS, '{}'),
 ];

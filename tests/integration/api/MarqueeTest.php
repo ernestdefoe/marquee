@@ -4,6 +4,7 @@ namespace Ernestdefoe\Marquee\Tests\integration\api;
 
 use Carbon\Carbon;
 use Ernestdefoe\Marquee\Settings;
+use Ernestdefoe\Marquee\Source\DataLanguage;
 use Ernestdefoe\Marquee\Source\DeezerAlbums;
 use Ernestdefoe\Marquee\Source\DeezerClient;
 use Ernestdefoe\Marquee\Source\IgdbGames;
@@ -214,6 +215,36 @@ class MarqueeTest extends TestCase
     }
 
     #[Test]
+    public function the_data_language_follows_the_forum_unless_set(): void
+    {
+        $this->setting('default_locale', 'pt_BR');
+        $this->assertSame('pt-BR', $this->app()->getContainer()->make(DataLanguage::class)->get());
+    }
+
+    #[Test]
+    public function an_explicit_data_language_wins_and_bad_values_fall_back(): void
+    {
+        $this->setting(Settings::LANGUAGE, 'fr-FR');
+        $this->assertSame('fr-FR', $this->app()->getContainer()->make(DataLanguage::class)->get());
+    }
+
+    #[Test]
+    public function list_posters_can_be_turned_off(): void
+    {
+        $this->setting(Settings::LIST_POSTERS, '0');
+        $this->assertFalse($this->json($this->send($this->request('GET', '/api')))['data']['attributes']['marqueeListPosters']);
+    }
+
+    #[Test]
+    public function igdb_uses_a_regional_name_only_for_its_language(): void
+    {
+        $game = ['name' => 'Elden Ring', 'game_localizations' => [['name' => 'エルデンリング', 'region' => ['identifier' => 'ja-JP']]]];
+
+        $this->assertSame('エルデンリング', IgdbGames::normalize($game, null, 'ja')['title']);
+        $this->assertSame('Elden Ring', IgdbGames::normalize($game, null, 'fr-FR')['title']);
+    }
+
+    #[Test]
     public function season_and_episode_references_are_tagged_in_posts(): void
     {
         $formatter = $this->app()->getContainer()->make(Formatter::class);
@@ -222,6 +253,7 @@ class MarqueeTest extends TestCase
         $this->assertStringContainsString('data-season="02" data-episode="04">S02E04</span>', $html('Loved S02E04!'));
         $this->assertStringContainsString('data-season="2" data-episode="4">Season 2 Episode 4</span>', $html('Season 2 Episode 4 was it.'));
         $this->assertStringContainsString('data-season="3" data-episode="">Season 3</span>', $html('All of Season 3.'));
+        $this->assertStringContainsString('data-season="2" data-episode="4">Saison 2 Épisode 4</span>', $html('La Saison 2 Épisode 4.'));
         $this->assertStringNotContainsString('MarqueeRef', $html('pass2 S2a xS2 S2E4x'));
         $this->assertStringNotContainsString('<script>', $html('<script>S2E4</script>'));
     }

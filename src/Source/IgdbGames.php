@@ -20,9 +20,9 @@ class IgdbGames implements Source
         .'rating,rating_count,cover.image_id,artworks.image_id,artworks.width,artworks.height,artworks.alpha_channel,screenshots.image_id,platforms.name,'
         .'platforms.abbreviation,genres.name,game_modes.name,involved_companies.company.name,'
         .'involved_companies.developer,involved_companies.publisher,videos.video_id,videos.name,'
-        .'franchises.name,collections.name';
+        .'franchises.name,collections.name,game_localizations.name,game_localizations.region.identifier';
 
-    public function __construct(private IgdbClient $igdb)
+    public function __construct(private IgdbClient $igdb, private DataLanguage $language)
     {
     }
 
@@ -88,12 +88,21 @@ class IgdbGames implements Source
             throw new SourceException("IGDB has no game $id");
         }
 
-        return self::normalize($game, $named['ttb'][0] ?? null);
+        return self::normalize($game, $named['ttb'][0] ?? null, $this->language->get());
     }
 
     /** Public so the shape can be checked without credentials. */
-    public static function normalize(array $g, ?array $ttb): array
+    public static function normalize(array $g, ?array $ttb, string $language = 'en'): array
     {
+        // IGDB keeps regional names (ja-JP, ko-KR); use one if it matches.
+        foreach ($g['game_localizations'] ?? [] as $local) {
+            $region = strtolower($local['region']['identifier'] ?? '');
+            if (! empty($local['name']) && $region !== '' && str_starts_with($region, strtolower(substr($language, 0, 2)))) {
+                $g['name'] = $local['name'];
+                break;
+            }
+        }
+
         $companies = $g['involved_companies'] ?? [];
         $role = fn (string $flag) => array_values(array_unique(array_filter(array_map(
             fn ($c) => ! empty($c[$flag]) ? ($c['company']['name'] ?? null) : null,

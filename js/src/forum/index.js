@@ -139,7 +139,8 @@ app.initializers.add('ernestdefoe-marquee', () => {
   extend(DiscussionListItem.prototype, 'authorItems', function (items) {
     const discussion = this.attrs.discussion;
     const link = linkFor(discussion);
-    if (!link || !link.media.poster()) return;
+    // The admin can turn list posters off (e.g. when FoF Discussion Thumbnail draws its own).
+    if (!link || !link.media.poster() || app.forum.attribute('marqueeListPosters') === false) return;
 
     items.add(
       'marqueePoster',

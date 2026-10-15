@@ -6,7 +6,7 @@ use s9e\TextFormatter\Configurator;
 
 /**
  * Season and episode references in posts: S02E04, S2E4, "Season 2 Episode 4",
- * S02 and "Season 2". Each becomes a span carrying the numbers; the forum turns
+ * S02 and "Season 2" (and the French "Saison 2 Épisode 4", "Saison 2"). Each becomes a span carrying the numbers; the forum turns
  * it into a chip only inside a discussion linked to a TV show, so elsewhere the
  * text reads exactly as typed. Which show it means is the discussion's link, so
  * changing the link updates every reference.
@@ -24,10 +24,11 @@ class EpisodeReferences
     {
         $patterns = [
             'MQEP' => '[Ss](?<season>\d{1,2}) ?[Ee](?<episode>\d{1,3})',
-            'MQEPLONG' => '[Ss]eason (?<season>\d{1,2}),? [Ee]pisode (?<episode>\d{1,3})',
+            // English and French long forms: "Season 2 Episode 4", "Saison 2 Épisode 4".
+            'MQEPLONG' => '(?:[Ss]eason|[Ss]aison) (?<season>\d{1,2}),? (?:[Ee]pisode|[Éé]pisode) (?<episode>\d{1,3})',
             'MQSEASON' => '[Ss](?<season>\d{1,2})',
             // Not when "Episode" follows: that is MQEPLONG's.
-            'MQSEASONLONG' => '[Ss]eason (?<season>\d{1,2})(?!,? [Ee]pisode)',
+            'MQSEASONLONG' => '(?:[Ss]eason|[Ss]aison) (?<season>\d{1,2})(?!,? (?:[Ee]pisode|[Éé]pisode))',
         ];
 
         foreach ($patterns as $tag => $pattern) {

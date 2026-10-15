@@ -17,7 +17,8 @@ class TmdbClient
 
     public function __construct(
         private SettingsRepositoryInterface $settings,
-        private Cache $cache
+        private Cache $cache,
+        private DataLanguage $language
     ) {
     }
 
@@ -28,7 +29,7 @@ class TmdbClient
 
     public function language(): string
     {
-        return $this->settings->get(Settings::LANGUAGE) ?: 'en-US';
+        return $this->language->get();
     }
 
     /** @throws SourceException */

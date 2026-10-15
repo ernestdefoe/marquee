@@ -18,7 +18,8 @@ A [Flarum 2](https://flarum.org) extension that links a discussion to a movie, a
 - **Posters in the discussion list,** with the title's year, or the season and episode, under each discussion.
 - **Change it later.** Anyone who can rename a discussion gets **Change linked title** in its controls menu: pick a different title, a different season or episode, or remove the link, and optionally rename the discussion to match.
 - **Works on any theme.** Built and tested on Flarum's default theme and [Bespoke](https://github.com/ernestdefoe/bespoke). The card keeps the core header's classes, so themes that style the header still apply where it makes sense.
-- **Translatable.** Every word on screen comes from the language files, and the language TMDB answers in is a setting.
+- **Speaks your forum's language.** Marquee ships in English and French, and every word on screen comes from the language files, so language packs and fof/linguist can add more. Movie and TV titles, synopses and genres follow the forum's default language automatically (or a language you choose). Dates and numbers follow the forum's locale. "Saison 2 Épisode 4" works in posts as well as "Season 2 Episode 4".
+- **Posters in the list are optional.** Turn them off in the settings if another extension, such as FoF Discussion Thumbnail, already shows thumbnails there.
 
 ![Searching while you type the title](https://raw.githubusercontent.com/ernestdefoe/marquee/main/.github/screenshots/composer-search.png)
 
@@ -93,6 +94,7 @@ php flarum cache:clear
 - **Page views never call TMDB or IGDB.** A title's details are fetched once, when someone links it, and stored on your forum. They refresh at most once a week, and only when someone links that title again. A TV season is fetched the first time anyone opens it.
 - **Lean on every page.** The discussion list adds one database query in total, however many linked discussions it shows, and sends only each title's name, year and poster. The full details travel only with the discussion that shows them.
 - **Searches are cached and capped.** Each search is kept for a day, so ten members typing the same title cost one call. Each member is limited to 40 searches a minute, and IGDB calls are paced to stay under its limit of four a second.
+- **Languages by source.** TMDB has real translations, so movies and TV follow your language. IGDB's game data is English, with Japanese and Korean names only. Album titles are the artists' own. When you change the language, titles already linked switch at their next weekly refresh.
 - **Your keys stay on the server.** The TMDB token and the Twitch secret are never sent to browsers. Searches go through your forum.
 - **Who can link.** Anyone who can start discussions. Changing or removing the link on an existing discussion (**Change linked title** in its controls menu) takes the same permission as renaming it.
 

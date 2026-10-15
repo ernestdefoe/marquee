@@ -2,6 +2,7 @@
 
 namespace Ernestdefoe\Marquee\Api;
 
+use Ernestdefoe\Marquee\Source\DataLanguage;
 use Ernestdefoe\Marquee\Source\Outage;
 use Ernestdefoe\Marquee\Source\SourceException;
 use Ernestdefoe\Marquee\Source\Sources;
@@ -18,7 +19,7 @@ class SearchController implements RequestHandlerInterface
 {
     use Throttle;
 
-    public function __construct(private Sources $sources, private Cache $cache, private Outage $outage)
+    public function __construct(private Sources $sources, private Cache $cache, private Outage $outage, private DataLanguage $language)
     {
     }
 
@@ -42,7 +43,8 @@ class SearchController implements RequestHandlerInterface
 
         try {
             $results = $this->cache->remember(
-                'marquee.search.'.$source->kind().'.'.md5(mb_strtolower($query)),
+                // The language is part of the key: switching it must not serve old results.
+                'marquee.search.'.$source->kind().'.'.$this->language->get().'.'.md5(mb_strtolower($query)),
                 86400,
                 fn () => $this->outage->guard($source->kind(), fn () => $source->search($query))
             );
