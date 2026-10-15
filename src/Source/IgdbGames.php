@@ -102,9 +102,10 @@ class IgdbGames implements Source
 
         $trailer = null;
         foreach ($g['videos'] ?? [] as $video) {
-            $trailer ??= $video['video_id'] ?? null;
-            if (stripos($video['name'] ?? '', 'trailer') !== false) {
-                $trailer = $video['video_id'];
+            $id = TmdbClient::youtube($video['video_id'] ?? null);
+            $trailer ??= $id;
+            if ($id && stripos($video['name'] ?? '', 'trailer') !== false) {
+                $trailer = $id;
                 break;
             }
         }
@@ -149,7 +150,7 @@ class IgdbGames implements Source
                 'completely' => $hours($ttb['completely'] ?? null),
             ] : null,
             'trailer' => $trailer,
-            'url' => $g['url'] ?? null,
+            'url' => str_starts_with($g['url'] ?? '', 'https://www.igdb.com/') ? $g['url'] : null,
         ];
     }
 
@@ -175,7 +176,7 @@ class IgdbGames implements Source
 
     private static function image(?string $imageId): ?string
     {
-        return $imageId ? 'igdb:'.$imageId : null;
+        return $imageId && preg_match('/^[a-z0-9]{1,40}$/', $imageId) ? 'igdb:'.$imageId : null;
     }
 
     /**

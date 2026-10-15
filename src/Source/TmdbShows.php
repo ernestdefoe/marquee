@@ -27,7 +27,7 @@ class TmdbShows implements SeasonSource
             'id' => (string) $r['id'],
             'title' => $r['name'],
             'year' => TmdbClient::year($r['first_air_date'] ?? null),
-            'poster' => $r['poster_path'] ?? null,
+            'poster' => TmdbClient::path($r['poster_path'] ?? null),
             'subtitle' => implode(', ', array_slice(array_filter(array_map(fn ($g) => $genres[$g] ?? null, $r['genre_ids'] ?? [])), 0, 2)),
         ], array_slice($results, 0, 8));
     }
@@ -52,7 +52,7 @@ class TmdbShows implements SeasonSource
             'name' => $season['name'],
             'year' => TmdbClient::year($season['air_date'] ?? null),
             'episodes' => (int) $season['episode_count'],
-            'poster' => $season['poster_path'] ?? null,
+            'poster' => TmdbClient::path($season['poster_path'] ?? null),
             'score' => TmdbClient::score($season['vote_average'] ?? null),
         ], array_filter($s['seasons'] ?? [], fn ($season) => $season['season_number'] > 0 && $season['episode_count'] > 0)));
 
@@ -67,8 +67,8 @@ class TmdbShows implements SeasonSource
             'score' => TmdbClient::score($s['vote_average'] ?? null),
             'tagline' => $s['tagline'] ?: null,
             'overview' => $s['overview'] ?: null,
-            'poster' => $s['poster_path'] ?? null,
-            'backdrop' => $s['backdrop_path'] ?? null,
+            'poster' => TmdbClient::path($s['poster_path'] ?? null),
+            'backdrop' => TmdbClient::path($s['backdrop_path'] ?? null),
             'crew' => ['creator' => array_column($s['created_by'] ?? [], 'name')],
             'cast' => TmdbClient::people($s['aggregate_credits']['cast'] ?? [], 8, fn ($p) => $p['roles'][0]['character'] ?? ''),
             'trailer' => TmdbClient::trailer($s['videos'] ?? []),
@@ -90,7 +90,7 @@ class TmdbShows implements SeasonSource
             'name' => $s['name'] ?? null,
             'overview' => $s['overview'] ?: null,
             'year' => TmdbClient::year($s['air_date'] ?? null),
-            'poster' => $s['poster_path'] ?? null,
+            'poster' => TmdbClient::path($s['poster_path'] ?? null),
             'score' => TmdbClient::score($s['vote_average'] ?? null),
             'episodes' => array_map(fn ($e) => [
                 'n' => (int) $e['episode_number'],
@@ -98,7 +98,7 @@ class TmdbShows implements SeasonSource
                 'date' => $e['air_date'] ?: null,
                 'runtime' => $e['runtime'] ?: null,
                 'score' => TmdbClient::score($e['vote_average'] ?? null),
-                'still' => $e['still_path'] ?? null,
+                'still' => TmdbClient::path($e['still_path'] ?? null),
                 'overview' => $e['overview'] ?: null,
                 'directors' => TmdbClient::crew($e['crew'] ?? [], ['Director']),
                 'writers' => TmdbClient::crew($e['crew'] ?? [], ['Writer', 'Teleplay', 'Story']),

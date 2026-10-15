@@ -27,7 +27,7 @@ class TmdbMovies implements Source
             'id' => (string) $r['id'],
             'title' => $r['title'],
             'year' => TmdbClient::year($r['release_date'] ?? null),
-            'poster' => $r['poster_path'] ?? null,
+            'poster' => TmdbClient::path($r['poster_path'] ?? null),
             'subtitle' => implode(', ', array_slice(array_filter(array_map(fn ($g) => $genres[$g] ?? null, $r['genre_ids'] ?? [])), 0, 2)),
         ], array_slice($results, 0, 8));
     }
@@ -61,8 +61,8 @@ class TmdbMovies implements Source
             'score' => TmdbClient::score($m['vote_average'] ?? null),
             'tagline' => $m['tagline'] ?: null,
             'overview' => $m['overview'] ?: null,
-            'poster' => $m['poster_path'] ?? null,
-            'backdrop' => $m['backdrop_path'] ?? null,
+            'poster' => TmdbClient::path($m['poster_path'] ?? null),
+            'backdrop' => TmdbClient::path($m['backdrop_path'] ?? null),
             'crew' => [
                 'director' => TmdbClient::crew($crew, ['Director']),
                 'writer' => TmdbClient::crew($crew, ['Screenplay', 'Writer']),
