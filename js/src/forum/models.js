@@ -9,5 +9,6 @@ Object.assign(Media.prototype, {
   title: Model.attribute('title'),
   year: Model.attribute('year'),
   poster: Model.attribute('poster'),
+  artist: Model.attribute('artist'),
   details: Model.attribute('details'),
 });

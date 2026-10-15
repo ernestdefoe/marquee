@@ -55,6 +55,10 @@ app.initializers.add('ernestdefoe-marquee', () => {
           fields.marquee = picked;
           fields.title(titleFor(picked));
         }}
+        onlookup={(link, before) => {
+          // Albums: search has no year. Add it, unless the title was edited meanwhile.
+          if (fields.title() === titleFor(before)) fields.title(titleFor(link));
+        }}
         onkeydown={this.onkeydown.bind(this)}
         placeholder={this.attrs.titlePlaceholder}
         disabled={!!this.attrs.disabled}
@@ -139,7 +143,12 @@ app.initializers.add('ernestdefoe-marquee', () => {
 
     items.add(
       'marqueePoster',
-      <Link className="Marquee-listPoster" href={app.route.discussion(discussion)} tabindex="-1" aria-hidden="true">
+      <Link
+        className={`Marquee-listPoster Marquee-listPoster--${link.media.kind()}`}
+        href={app.route.discussion(discussion)}
+        tabindex="-1"
+        aria-hidden="true"
+      >
         <img src={img(link.media.poster(), 'w92')} alt="" loading="lazy" decoding="async" />
       </Link>,
       95

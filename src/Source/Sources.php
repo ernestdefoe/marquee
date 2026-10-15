@@ -8,9 +8,9 @@ class Sources
     /** @var array<string, Source> */
     private array $sources;
 
-    public function __construct(TmdbMovies $movies, TmdbShows $shows, IgdbGames $games)
+    public function __construct(TmdbMovies $movies, TmdbShows $shows, IgdbGames $games, DeezerAlbums $music)
     {
-        foreach ([$movies, $shows, $games] as $source) {
+        foreach ([$movies, $shows, $games, $music] as $source) {
             $this->sources[$source->kind()] = $source;
         }
     }

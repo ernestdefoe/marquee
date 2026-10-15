@@ -1015,12 +1015,19 @@
     border-radius: 3px;
   }
 
-  span {
+  // Beats core's `.Dropdown-menu > li > span` (padding, gap, centring).
+  .MarqueeSuggest & > span {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    padding: 0;
     min-width: 0;
+    text-align: left;
+    line-height: 1.35;
   }
 
   b {
-    display: block;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1030,4 +1037,83 @@
     color: var(--muted-color);
     font-size: 12px;
   }
+}
+
+// ---- Music -----------------------------------------------------------------
+.MarqueeHero--music .MarqueeHero-poster {
+  aspect-ratio: 1;
+}
+
+.MarqueeHero-fans {
+  margin: 0;
+  font-weight: 600;
+  opacity: 0.85;
+
+  .fa-heart {
+    color: #ef5466;
+  }
+}
+
+.MarqueeTracks {
+  display: grid;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+  max-height: 360px;
+  overflow-y: auto;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+
+  li {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 7px 14px;
+
+    & + li {
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+  }
+
+  em {
+    width: 1.6em;
+    flex: none;
+    font-style: normal;
+    text-align: right;
+    opacity: 0.55;
+    font-variant-numeric: tabular-nums;
+  }
+
+  time {
+    margin-left: auto;
+    opacity: 0.65;
+    font-variant-numeric: tabular-nums;
+  }
+
+  small {
+    opacity: 0.65;
+  }
+}
+
+.MarqueeTracks-title {
+  min-width: 0;
+}
+
+.MarqueeTracks-explicit {
+  flex: none;
+  padding: 0 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.25);
+  font-size: 10px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.Marquee-listPoster--music img {
+  height: 32px;
+}
+
+.Marquee-results--music .Marquee-result img,
+.Marquee-results--music .Marquee-result .Marquee-noPoster {
+  height: 34px;
 }

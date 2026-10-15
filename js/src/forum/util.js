@@ -14,9 +14,17 @@ const IGDB_SIZES = { w92: 'cover_small_2x', w185: 'thumb_2x', w300: 'screenshot_
  * An image URL at one of the TMDB sizes (w92, w185, w300, w342, w780, w1280).
  * IGDB images are stored as `igdb:{image_id}` and mapped to IGDB's own sizes.
  */
+// Deezer serves any square size; these match the TMDB sizes used here.
+const DEEZER_SIZES = { w92: 120, w185: 250, w300: 500, w342: 500, w780: 1000, w1280: 1000 };
+
 export const img = (path, size) => {
   if (!path) return null;
   if (path.startsWith('igdb:')) return `${IGDB_IMAGES}t_${IGDB_SIZES[size] || 'cover_big'}/${path.slice(5)}.jpg`;
+  if (path.startsWith('deezer:')) {
+    const [, type, md5] = path.split(':');
+    const px = DEEZER_SIZES[size] || 500;
+    return `https://cdn-images.dzcdn.net/images/${type}/${md5}/${px}x${px}-000000-80-0-0.jpg`;
+  }
   return TMDB_IMAGES + size + path;
 };
 
@@ -31,7 +39,7 @@ export const runtime = (minutes) => {
 
 export const date = (value) => (value ? dayjs(value).format('LL') : null);
 
-export const sourceName = (kind) => (kind === 'game' ? 'IGDB' : 'TMDB');
+export const sourceName = (kind) => ({ game: 'IGDB', music: 'Deezer' })[kind] || 'TMDB';
 
 /** Kind (movie | tv | game) for the first tag that has a source, if any. */
 export const kindForTags = (tags) => {
@@ -46,8 +54,9 @@ export const tagForKind = (kind) => {
 };
 
 /** The discussion title for a title, one of its seasons, or one episode. */
-export const titleFor = ({ title, year }, season, episode) => {
-  const base = year ? `${title} (${year})` : title;
+export const titleFor = ({ title, year, artist }, season, episode) => {
+  const name = artist ? `${artist} – ${title}` : title;
+  const base = year ? `${name} (${year})` : name;
   if (season && episode) return text('title.episode', { base, season: pad(season), episode: pad(episode.n), name: episode.title });
   if (season) return text('title.season', { base, number: season });
   return base;
@@ -74,6 +83,7 @@ export const pickFromMedia = (media) => ({
   title: media.title(),
   year: media.year(),
   poster: media.poster(),
+  artist: media.artist() || null,
   seasons: media.details()?.seasons || null,
   season: null,
   episode: null,

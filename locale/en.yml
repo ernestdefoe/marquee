@@ -14,6 +14,7 @@ ernestdefoe-marquee:
     source_movie: Movies (TMDB)
     source_tv: TV shows (TMDB)
     source_game: Games (IGDB)
+    source_music: Music albums (Deezer, no key needed)
 
   api:
     link_invalid: That title could not be linked. Pick it again from the list.
@@ -24,11 +25,13 @@ ernestdefoe-marquee:
       movie: Movie
       tv: TV
       game: Game
+      music: Album
 
     picker:
       placeholder_movie: Search for a movie by title
       placeholder_tv: Search for a TV show by title
       placeholder_game: Search for a game by title
+      placeholder_music: Search for an album or artist
       results_from: "Results from {source}"
       escape_hint: Esc keeps a plain title
       unavailable: "{source} is not answering right now. You can still post with a plain title."
@@ -57,6 +60,11 @@ ernestdefoe-marquee:
       seasons_count: "{count, plural, one {# season} other {# seasons}}"
       episodes_count: "{count, plural, one {# episode} other {# episodes}}"
       season_episode: "Season {season}, Episode {episode}"
+      tracks_count: "{count, plural, one {# track} other {# tracks}}"
+      record_album: Album
+      record_single: Single
+      record_ep: EP
+      record_compile: Compilation
 
     credits:
       director: Director
@@ -70,6 +78,8 @@ ernestdefoe-marquee:
       developer: Developer
       publisher: Publisher
       series: Series
+      artist: Artist
+      label: Label
 
     hero:
       user_score: TMDB user score
@@ -91,8 +101,13 @@ ernestdefoe-marquee:
       ttb_completely: Completionist
       hours: "{count, plural, one {# hour} other {# hours}}"
       screenshots: Screenshots
+      tracklist: Tracklist
+      explicit: Explicit
+      fans: "{count} fans on Deezer"
+      listen_on: "Listen on {source}"
       attribution_tmdb: Data and images from TMDB. Not endorsed or certified by TMDB.
       attribution_igdb: Game data from IGDB.com
+      attribution_deezer: Album data and covers from Deezer
 
     modal:
       title: "S{season} · E{episode}  {name}"

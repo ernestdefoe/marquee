@@ -1,6 +1,6 @@
 import KeyboardNavigatable from 'flarum/common/utils/KeyboardNavigatable';
 import classList from 'flarum/common/utils/classList';
-import { text, img, pad } from './util';
+import { text, img, pad, date, runtime } from './util';
 import { loadSeason } from './api';
 import { showFor } from './refs';
 
@@ -128,7 +128,7 @@ export function attachSuggest(editor) {
           .map((e) => ({
             insert: `S${pad(season.number)}E${pad(e.n)}`,
             label: `E${pad(e.n)} · ${e.title}`,
-            detail: [e.date, e.runtime ? `${e.runtime}m` : null].filter(Boolean).join(' · '),
+            detail: [date(e.date), runtime(e.runtime)].filter(Boolean).join(' · '),
             image: img(e.still, 'w300'),
           }));
 

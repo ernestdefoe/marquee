@@ -22,7 +22,7 @@ export default class TagSources extends Component {
 
   view() {
     const map = this.map();
-    const options = { '': t('source_none'), movie: t('source_movie'), tv: t('source_tv'), game: t('source_game') };
+    const options = { '': t('source_none'), movie: t('source_movie'), tv: t('source_tv'), game: t('source_game'), music: t('source_music') };
 
     return (
       <div className="Form-group MarqueeTagSources">

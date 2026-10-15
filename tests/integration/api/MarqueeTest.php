@@ -4,7 +4,10 @@ namespace Ernestdefoe\Marquee\Tests\integration\api;
 
 use Carbon\Carbon;
 use Ernestdefoe\Marquee\Settings;
+use Ernestdefoe\Marquee\Source\DeezerAlbums;
+use Ernestdefoe\Marquee\Source\DeezerClient;
 use Ernestdefoe\Marquee\Source\IgdbGames;
+use Flarum\Formatter\Formatter;
 use Ernestdefoe\Marquee\Source\TmdbClient;
 use Flarum\Discussion\Discussion;
 use Flarum\Tags\Tag;
@@ -109,6 +112,16 @@ class MarqueeTest extends TestCase
     }
 
     #[Test]
+    public function music_needs_no_keys(): void
+    {
+        $this->setting(Settings::TAGS, json_encode(['1' => 'music']));
+        $this->setting(Settings::TMDB_TOKEN, '');
+
+        $tags = $this->json($this->send($this->request('GET', '/api')))['data']['attributes']['marqueeTags'];
+        $this->assertSame(['1' => 'music'], $tags);
+    }
+
+    #[Test]
     public function a_stored_title_can_be_linked(): void
     {
         $response = $this->createDiscussion(['kind' => 'movie', 'id' => '603'], 1);
@@ -198,6 +211,51 @@ class MarqueeTest extends TestCase
         $this->assertSame(200, $this->send($this->request('GET', '/api/marquee/media/2/seasons/1'))->getStatusCode());
         $this->assertSame(404, $this->send($this->request('GET', '/api/marquee/media/2/seasons/5'))->getStatusCode());
         $this->assertSame(404, $this->send($this->request('GET', '/api/marquee/media/99/seasons/1'))->getStatusCode());
+    }
+
+    #[Test]
+    public function season_and_episode_references_are_tagged_in_posts(): void
+    {
+        $formatter = $this->app()->getContainer()->make(Formatter::class);
+        $html = fn (string $text) => $formatter->render($formatter->parse($text));
+
+        $this->assertStringContainsString('data-season="02" data-episode="04">S02E04</span>', $html('Loved S02E04!'));
+        $this->assertStringContainsString('data-season="2" data-episode="4">Season 2 Episode 4</span>', $html('Season 2 Episode 4 was it.'));
+        $this->assertStringContainsString('data-season="3" data-episode="">Season 3</span>', $html('All of Season 3.'));
+        $this->assertStringNotContainsString('MarqueeRef', $html('pass2 S2a xS2 S2E4x'));
+        $this->assertStringNotContainsString('<script>', $html('<script>S2E4</script>'));
+    }
+
+    #[Test]
+    public function deezer_albums_are_normalised_and_checked(): void
+    {
+        $album = DeezerAlbums::normalize([
+            'id' => 6575789,
+            'title' => 'Random Access Memories',
+            'release_date' => '2013-05-17',
+            'label' => 'Columbia',
+            'record_type' => 'album',
+            'nb_tracks' => 2,
+            'duration' => 600,
+            'fans' => 886534,
+            'md5_image' => '311bba0fc112d15f72c8b5a65f0456c1',
+            'link' => 'javascript:alert(1)',
+            'artist' => ['name' => 'Daft Punk', 'picture_xl' => 'https://cdn-images.dzcdn.net/images/artist/638e69b9caaf9f9f3f8826febea7b543/1000x1000-000000-80-0-0.jpg'],
+            'genres' => ['data' => [['name' => 'Dance']]],
+            'tracks' => ['data' => [
+                ['title' => 'Give Life Back to Music', 'duration' => 274, 'artist' => ['name' => 'Daft Punk']],
+                ['title' => 'Get Lucky', 'duration' => 367, 'explicit_lyrics' => false, 'artist' => ['name' => 'Daft Punk feat. Pharrell']],
+            ]],
+        ]);
+
+        $this->assertSame(2013, $album['year']);
+        $this->assertSame('deezer:cover:311bba0fc112d15f72c8b5a65f0456c1', $album['poster']);
+        $this->assertSame('deezer:artist:638e69b9caaf9f9f3f8826febea7b543', $album['backdrop']);
+        $this->assertNull($album['tracks'][0]['artist']);
+        $this->assertSame('Daft Punk feat. Pharrell', $album['tracks'][1]['artist']);
+        // Not a Deezer link, so the album's own Deezer URL is used instead.
+        $this->assertSame('https://www.deezer.com/album/6575789', $album['url']);
+        $this->assertNull(DeezerClient::image('cover', '"><script>'));
     }
 
     #[Test]

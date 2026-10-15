@@ -81,6 +81,22 @@ await page.evaluate(() => document.querySelector('.MarqueeSeasons').scrollIntoVi
 await sleep(400);
 await shot('season-browser.jpg');
 
+// Music: an album discussion.
+await go('/d/30');
+await shot('music-hero.jpg');
+
+// Episode references in a post, with the hover preview.
+await go('/d/12/3');
+await page.evaluate(() => document.querySelector('.MarqueeRef--episode')?.closest('.PostStream-item')?.scrollIntoView({ block: 'center' }));
+await settle(1200);
+const chip = await page.$('.MarqueeRef--episode');
+if (chip) {
+  await chip.hover();
+  await sleep(1500);
+}
+await shot('episode-references.png');
+await page.mouse.move(0, 0);
+
 // Logged in: the composer and the admin page.
 await go('/');
 await page.evaluate((u, p) => app.session.login({ identification: u, password: p, remember: false }), process.env.MARQUEE_USER, process.env.MARQUEE_PASSWORD);
@@ -106,9 +122,37 @@ await page.waitForSelector('.Marquee-result', { timeout: 15000 });
 await settle(800);
 await shot('composer-search.png');
 
+// The same search for albums.
 await page.evaluate(() => {
   app.composer.fields.title('');
   app.composer.fields.marquee = null;
+  app.composer.fields.tags = [app.store.all('tags').find((t) => t.slug() === 'music')];
+  m.redraw.sync();
+});
+await page.click('.DiscussionComposer-title');
+await page.keyboard.type('rumours', { delay: 60 });
+await page.waitForSelector('.Marquee-results--music .Marquee-result', { timeout: 15000 });
+await settle(800);
+await shot('music-search.png');
+
+await page.evaluate(() => {
+  app.composer.fields.title('');
+  app.composer.fields.marquee = null;
+  app.composer.hide();
+});
+
+// Episode autocomplete in a reply.
+await go('/d/12');
+await page.evaluate(() => document.querySelector('.ReplyPlaceholder')?.click());
+await page.waitForSelector('.TextEditor-editor');
+await sleep(1200);
+await page.click('.TextEditor-editor');
+await page.keyboard.type('Which was better, S3E', { delay: 70 });
+await page.waitForSelector('.MarqueeSuggest-item', { timeout: 15000 });
+await settle(1000);
+await shot('episode-autocomplete.png');
+await page.evaluate(() => {
+  app.composer.fields.content('');
   app.composer.hide();
 });
 // The change-link window, from the discussion's controls menu.

@@ -57,6 +57,7 @@ class LookupController implements RequestHandlerInterface
             'title' => $media->title,
             'year' => $media->year,
             'poster' => $media->poster,
+            'artist' => $media->data['artist'] ?? null,
             'seasons' => $media->data['seasons'] ?? null,
         ]]);
     }

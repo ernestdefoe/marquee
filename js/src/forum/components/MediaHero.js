@@ -2,10 +2,11 @@ import app from 'flarum/forum/app';
 import Component from 'flarum/common/Component';
 import listItems from 'flarum/common/helpers/listItems';
 import classList from 'flarum/common/utils/classList';
+import abbreviateNumber from 'flarum/common/utils/abbreviateNumber';
 import tagsLabel from 'ext:flarum/tags/common/helpers/tagsLabel';
 import SeasonBrowser from './SeasonBrowser';
 import EpisodeModal from './EpisodeModal';
-import { t, img, date, runtime, sourceName, pickFromMedia } from '../util';
+import { t, text, img, date, runtime, sourceName, pickFromMedia } from '../util';
 import { loadSeason, primeSeason } from '../api';
 import { startDiscussion } from '../startDiscussion';
 
@@ -56,6 +57,32 @@ const screenshots = (list) =>
           </li>
         ))}
       </ul>
+    </div>
+  ) : null;
+
+const clock = (seconds) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+
+const tracklist = (tracks) =>
+  tracks && tracks.length ? (
+    <div>
+      <h4 className="MarqueeHero-sectionTitle">{t('hero.tracklist')}</h4>
+      <ol className="MarqueeTracks">
+        {tracks.map((track) => (
+          <li>
+            <em>{track.n}</em>
+            <span className="MarqueeTracks-title">
+              {track.title}
+              {track.artist ? <small> · {track.artist}</small> : null}
+            </span>
+            {track.explicit ? (
+              <abbr className="MarqueeTracks-explicit" title={text('hero.explicit')}>
+                E
+              </abbr>
+            ) : null}
+            <time>{clock(track.duration)}</time>
+          </li>
+        ))}
+      </ol>
     </div>
   ) : null;
 
@@ -111,6 +138,33 @@ function subject(media, d, season, episode, seasonData) {
       overview: d.overview,
       people: [t('hero.cast'), d.cast],
       url: d.url,
+    };
+  }
+
+  if (media.kind() === 'music') {
+    return {
+      poster: d.poster,
+      backdrop: img(d.backdrop || d.poster, 'w1280'),
+      meta: [
+        date(d.date),
+        t(`meta.record_${d.recordType}`),
+        t('meta.tracks_count', { count: d.trackCount }),
+        runtime(Math.round(d.duration / 60)),
+        d.genres.join(', '),
+      ],
+      score: d.fans ? (
+        <p className="MarqueeHero-fans">
+          <i className="fas fa-heart" aria-hidden="true" /> {t('hero.fans', { count: abbreviateNumber(d.fans) })}
+        </p>
+      ) : null,
+      credits: credits([
+        [t('credits.artist'), d.artist],
+        [t('credits.label'), d.label],
+      ]),
+      overview: null,
+      extra: [tracklist(d.tracks)],
+      url: d.url,
+      linkLabel: t('hero.listen_on', { source: 'Deezer' }),
     };
   }
 
@@ -258,7 +312,7 @@ export default class MediaHero extends Component {
 
             <div className="MarqueeHero-links">
               <a className="Button Button--primary" href={s.url} target="_blank" rel="noopener noreferrer">
-                {t('hero.view_on', { source })}
+                {s.linkLabel || t('hero.view_on', { source })}
               </a>
               {ep ? (
                 <button

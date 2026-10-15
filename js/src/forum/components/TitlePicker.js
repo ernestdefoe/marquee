@@ -11,7 +11,8 @@ import { search, lookup } from '../api';
  *
  * Attrs: value, oninput(value), kind, linked (stop searching), onpick(link),
  * onkeydown (keys the list does not use), placeholder, disabled, inputClassName,
- * focusOnKind (move the cursor here once a kind appears), wrapper (element, default h3).
+ * focusOnKind (move the cursor here once a kind appears), wrapper (element, default h3),
+ * onlookup(link, before) (the stored title came back: year, seasons, artist).
  */
 export default class TitlePicker extends Component {
   oninit(vnode) {
@@ -97,7 +98,7 @@ export default class TitlePicker extends Component {
           {r.poster ? <img src={img(r.poster, 'w92')} alt="" loading="lazy" decoding="async" /> : <span className="Marquee-noPoster" />}
           <span>
             <b>{r.title}</b>
-            <small>{[r.year, r.subtitle].filter(Boolean).join(' · ')}</small>
+            <small>{[r.year, r.subtitle, r.tracks ? text('meta.tracks_count', { count: r.tracks }) : null].filter(Boolean).join(' · ')}</small>
           </span>
         </li>
       ));
@@ -111,7 +112,7 @@ export default class TitlePicker extends Component {
     );
 
     return (
-      <ul className="Dropdown-menu Marquee-results" id="Marquee-results" role="listbox">
+      <ul className={`Dropdown-menu Marquee-results Marquee-results--${kind}`} id="Marquee-results" role="listbox">
         {rows}
       </ul>
     );
@@ -170,6 +171,7 @@ export default class TitlePicker extends Component {
       title: result.title,
       year: result.year,
       poster: result.poster,
+      artist: result.artist || null,
       seasons: null,
       season: null,
       episode: null,
@@ -183,7 +185,9 @@ export default class TitlePicker extends Component {
     // Store it now: posting is then instant, and a show's seasons become pickable.
     lookup(kind, result.id).then(
       (media) => {
-        Object.assign(link, { id: media.id, seasons: media.seasons });
+        const before = { ...link };
+        Object.assign(link, { id: media.id, seasons: media.seasons, year: media.year ?? link.year, artist: media.artist ?? link.artist });
+        if (this.attrs.onlookup) this.attrs.onlookup(link, before);
         m.redraw();
       },
       () => {}

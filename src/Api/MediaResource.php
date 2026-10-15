@@ -37,6 +37,8 @@ class MediaResource extends AbstractDatabaseResource
             Schema\Str::make('title'),
             Schema\Integer::make('year')->nullable(),
             Schema\Str::make('poster')->nullable(),
+            // Albums only: lists show "Artist – Album".
+            Schema\Str::make('artist')->nullable()->get(fn (Media $m) => $m->data['artist'] ?? null),
             Schema\Arr::make('details')
                 ->visible(fn (Media $m, Context $context) => $context->showing(DiscussionResource::class) || $context->updating(DiscussionResource::class))
                 ->get(fn (Media $m) => $m->data),
