@@ -1,3 +1,7 @@
+vendor/
+composer.lock
 js/node_modules
-.DS_Store
 tools/node_modules
+.DS_Store
+tests/integration/tmp
+.phpunit.cache

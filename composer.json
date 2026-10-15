@@ -3,7 +3,6 @@
     "description": "Link discussions to movies, TV shows (down to the episode) and games, shown in the discussion hero. Data from TMDB and IGDB.",
     "type": "flarum-extension",
     "license": "MIT",
-    "version": "0.0.1",
     "authors": [
         {
             "name": "Ernest Defoe",
@@ -33,5 +32,28 @@
         "psr-4": {
             "Ernestdefoe\\Marquee\\": "src/"
         }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Ernestdefoe\\Marquee\\Tests\\": "tests/"
+        }
+    },
+    "require-dev": {
+        "flarum/phpstan": "^2.0",
+        "flarum/testing": "^2.0"
+    },
+    "scripts": {
+        "test": [
+            "@test:integration"
+        ],
+        "test:integration": "phpunit -c tests/phpunit.integration.xml",
+        "test:setup": "@php tests/integration/setup.php",
+        "analyse:phpstan": "phpstan analyse"
+    },
+    "scripts-descriptions": {
+        "test": "Runs all tests.",
+        "test:integration": "Runs all integration tests.",
+        "test:setup": "Sets up a database for use with integration tests. Execute this only once.",
+        "analyse:phpstan": "Run static analysis"
     }
 }

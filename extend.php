@@ -27,6 +27,7 @@ return [
 
     (new Extend\Model(Discussion::class))
         ->belongsTo('marqueeMedia', Media::class, 'marquee_media_id')
+        ->cast('marquee_media_id', 'integer')
         ->cast('marquee_season', 'integer')
         ->cast('marquee_episode', 'integer'),
 
@@ -36,7 +37,7 @@ return [
         ->fields(Api\DiscussionFields::class)
         ->endpoint(
             [Endpoint\Index::class, Endpoint\Show::class, Endpoint\Create::class, Endpoint\Update::class],
-            fn (Endpoint\Endpoint $endpoint) => $endpoint->addDefaultInclude(['marqueeMedia'])
+            fn (Endpoint\Index|Endpoint\Show|Endpoint\Create|Endpoint\Update $endpoint) => $endpoint->addDefaultInclude(['marqueeMedia'])
         ),
 
     (new Extend\ApiResource(ForumResource::class))

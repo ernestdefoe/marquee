@@ -23,6 +23,7 @@ class Media extends AbstractModel
 
     protected $casts = ['data' => 'array', 'fetched_at' => 'datetime', 'year' => 'integer'];
 
+    /** @return HasMany<Season, $this> */
     public function seasons(): HasMany
     {
         return $this->hasMany(Season::class, 'media_id');
