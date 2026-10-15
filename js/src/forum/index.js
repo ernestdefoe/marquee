@@ -118,7 +118,7 @@ app.initializers.add('ernestdefoe-marquee', () => {
 
     items.add(
       'marquee',
-      <Button icon="fas fa-film" onclick={() => app.modal.show(LinkModal, { discussion })}>
+      <Button icon="fas fa-link" onclick={() => app.modal.show(LinkModal, { discussion })}>
         {t(linkFor(discussion) ? 'link.change' : 'link.add')}
       </Button>,
       -10
