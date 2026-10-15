@@ -7,6 +7,8 @@ use Ernestdefoe\Marquee\Settings;
 use Ernestdefoe\Marquee\Source\DataLanguage;
 use Ernestdefoe\Marquee\Source\DeezerAlbums;
 use Ernestdefoe\Marquee\Source\DeezerClient;
+use Ernestdefoe\Marquee\Source\OpenLibraryBooks;
+use Ernestdefoe\Marquee\Source\OpenLibraryClient;
 use Ernestdefoe\Marquee\Source\IgdbGames;
 use Flarum\Formatter\Formatter;
 use Ernestdefoe\Marquee\Source\TmdbClient;
@@ -115,11 +117,11 @@ class MarqueeTest extends TestCase
     #[Test]
     public function music_needs_no_keys(): void
     {
-        $this->setting(Settings::TAGS, json_encode(['1' => 'music']));
+        $this->setting(Settings::TAGS, json_encode(['1' => 'music', '2' => 'book']));
         $this->setting(Settings::TMDB_TOKEN, '');
 
         $tags = $this->json($this->send($this->request('GET', '/api')))['data']['attributes']['marqueeTags'];
-        $this->assertSame(['1' => 'music'], $tags);
+        $this->assertSame(['1' => 'music', '2' => 'book'], $tags);
     }
 
     #[Test]
@@ -288,6 +290,77 @@ class MarqueeTest extends TestCase
         // Not a Deezer link, so the album's own Deezer URL is used instead.
         $this->assertSame('https://www.deezer.com/album/6575789', $album['url']);
         $this->assertNull(DeezerClient::image('cover', '"><script>'));
+    }
+
+    #[Test]
+    public function open_library_books_are_normalised_and_checked(): void
+    {
+        $doc = [
+            'key' => '/works/OL893461W',
+            'title' => 'Dune Messiah',
+            'author_name' => ['Frank Herbert', 'Someone Else'],
+            'first_publish_year' => 1969,
+            'cover_i' => 980253,
+            'edition_count' => 101,
+            'number_of_pages_median' => 279,
+            'ratings_average' => 3.937063,
+            'ratings_count' => 143,
+            'want_to_read_count' => 575,
+            'subject' => ['Science Fiction', 'science fiction', 'Translations into Russian', 'nyt:hardcover-fiction=2021', 'Dune (Imaginary place)', 'Accessible book', 'Fiction'],
+            'editions' => ['docs' => [[
+                'title' => 'Le Messie de Dune',
+                'language' => ['fre'],
+                'cover_i' => 974774,
+                'publisher' => ['Robert Laffont'],
+                'publish_date' => ['January 1, 1975'],
+                'isbn' => ['2221001648', '9782221001646'],
+            ]]],
+        ];
+        $work = [
+            'title' => 'Dune Messiah',
+            'description' => ['type' => '/type/text', 'value' => "**Book Two** of [the saga](https://example.com).\r\n\r\nPaul rules. ([source][1])\r\n\r\n(Source: the publisher)\r\n\r\n----------\r\n[1]: https://example.com"],
+        ];
+        $authors = [['name' => 'Frank Herbert', 'birth_date' => '8 October 1920', 'death_date' => '1986', 'photos' => [14852808]]];
+
+        $fr = OpenLibraryBooks::normalize('OL893461W', $doc, $work, $authors, 'fr');
+        $this->assertSame('Le Messie de Dune', $fr['title']);
+        $this->assertSame('Dune Messiah', $fr['originalTitle']);
+        $this->assertSame('ol:b:974774', $fr['poster']);
+        $this->assertSame('9782221001646', $fr['isbn']);
+        $this->assertSame('Robert Laffont', $fr['publisher']);
+        $this->assertSame("Book Two of the saga.\n\nPaul rules.", $fr['overview']);
+        $this->assertSame(['Science Fiction', 'Fiction'], $fr['subjects']);
+        $this->assertSame(3.9, $fr['rating']);
+        $this->assertSame(['name' => 'Frank Herbert', 'role' => '1920–1986', 'photo' => 'ol:a:14852808'], $fr['people'][0]);
+        $this->assertSame(['name' => 'Someone Else', 'role' => null, 'photo' => null], $fr['people'][1]);
+        $this->assertSame('https://openlibrary.org/works/OL893461W', $fr['url']);
+
+        // The French edition is not used on an English forum.
+        $en = OpenLibraryBooks::normalize('OL893461W', $doc, $work, $authors, 'en');
+        $this->assertSame('Dune Messiah', $en['title']);
+        $this->assertNull($en['originalTitle']);
+        $this->assertSame('ol:b:980253', $en['poster']);
+        $this->assertSame(279, $en['pages']);
+        $this->assertNull($en['isbn']);
+
+        // An edition in the work's own language keeps the work's casing, but lends its cover and publisher.
+        $doc['editions']['docs'][0] = ['title' => 'Dune messiah', 'subtitle' => 'book two', 'language' => ['eng'], 'cover_i' => 1, 'publisher' => ['Berkley'], 'publish_date' => ['xxxx']];
+        $same = OpenLibraryBooks::normalize('OL893461W', $doc, $work, $authors, 'en');
+        $this->assertSame('Dune Messiah', $same['title']);
+        $this->assertNull($same['subtitle']);
+        $this->assertSame('ol:b:1', $same['poster']);
+        $this->assertSame('Berkley', $same['publisher']);
+        $this->assertNull($same['published']);
+
+        $this->assertNull(OpenLibraryClient::image('b', '"><script>'));
+        $this->assertNull(OpenLibraryClient::image('b', -1));
+    }
+
+    #[Test]
+    public function book_ids_are_checked_before_any_request(): void
+    {
+        $this->expectException(\Ernestdefoe\Marquee\Source\SourceException::class);
+        $this->app()->getContainer()->make(OpenLibraryBooks::class)->details('../../admin');
     }
 
     #[Test]

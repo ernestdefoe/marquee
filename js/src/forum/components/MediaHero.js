@@ -168,6 +168,47 @@ function subject(media, d, season, episode, seasonData) {
     };
   }
 
+  if (media.kind() === 'book') {
+    return {
+      poster: d.poster,
+      backdrop: img(d.poster, 'w1280'),
+      meta: [
+        d.year ? t('meta.first_published', { year: d.year }) : null,
+        d.pages ? t('meta.pages_count', { count: d.pages }) : null,
+        d.editions > 1 ? t('meta.editions_count', { count: d.editions }) : null,
+      ],
+      score: [
+        d.subtitle && <p className="MarqueeHero-tagline">{d.subtitle}</p>,
+        d.rating ? (
+          <p className="MarqueeHero-fans">
+            <i className="fas fa-star" aria-hidden="true" /> {t('hero.book_rating', { rating: d.rating, count: abbreviateNumber(d.ratingCount) })}
+          </p>
+        ) : null,
+        d.readers ? (
+          <p className="MarqueeHero-fans">
+            <i className="fas fa-bookmark" aria-hidden="true" /> {t('hero.want_to_read', { count: abbreviateNumber(d.readers) })}
+          </p>
+        ) : null,
+        d.subjects.length ? (
+          <ul className="MarqueeHero-chips">
+            {d.subjects.map((subject) => (
+              <li>{subject}</li>
+            ))}
+          </ul>
+        ) : null,
+      ],
+      credits: credits([
+        [t('credits.author'), d.authors],
+        [t('credits.original_title'), d.originalTitle],
+        [t('credits.publisher'), [d.publisher, d.published].filter(Boolean).join(', ')],
+        [t('credits.isbn'), d.isbn],
+      ]),
+      overview: d.overview,
+      people: [t('hero.authors'), d.people.some((p) => p.photo) ? d.people : []],
+      url: d.url,
+    };
+  }
+
   if (media.kind() === 'game') {
     return {
       poster: d.poster,
@@ -332,7 +373,7 @@ export default class MediaHero extends Component {
                   <i className="fas fa-tv" aria-hidden="true" /> {t('hero.discuss_show')}
                 </button>
               ) : null}
-              <span className="MarqueeHero-attribution">{t(`hero.attribution_${source.toLowerCase()}`)}</span>
+              <span className="MarqueeHero-attribution">{t(`hero.attribution_${source.toLowerCase().replace(' ', '_')}`)}</span>
             </div>
           </div>
         </div>

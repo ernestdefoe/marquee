@@ -8,7 +8,7 @@ namespace Ernestdefoe\Marquee\Source;
  */
 interface Source
 {
-    /** movie | tv | game */
+    /** movie | tv | game | music | book */
     public function kind(): string;
 
     /** Whether the admin has given this source what it needs to work. */

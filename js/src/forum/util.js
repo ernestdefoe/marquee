@@ -17,8 +17,15 @@ const IGDB_SIZES = { w92: 'cover_small_2x', w185: 'thumb_2x', w300: 'screenshot_
 // Deezer serves any square size; these match the TMDB sizes used here.
 const DEEZER_SIZES = { w92: 120, w185: 250, w300: 500, w342: 500, w780: 1000, w1280: 1000 };
 
+// Open Library covers come in S, M and L; M is about 180px wide, L about 500px.
+const OPEN_LIBRARY_SIZES = { w92: 'M', w185: 'M' };
+
 export const img = (path, size) => {
   if (!path) return null;
+  if (path.startsWith('ol:')) {
+    const [, type, id] = path.split(':');
+    return `https://covers.openlibrary.org/${type}/id/${id}-${OPEN_LIBRARY_SIZES[size] || 'L'}.jpg`;
+  }
   if (path.startsWith('igdb:')) return `${IGDB_IMAGES}t_${IGDB_SIZES[size] || 'cover_big'}/${path.slice(5)}.jpg`;
   if (path.startsWith('deezer:')) {
     const [, type, md5] = path.split(':');
@@ -39,9 +46,9 @@ export const runtime = (minutes) => {
 
 export const date = (value) => (value ? dayjs(value).format('LL') : null);
 
-export const sourceName = (kind) => ({ game: 'IGDB', music: 'Deezer' })[kind] || 'TMDB';
+export const sourceName = (kind) => ({ game: 'IGDB', music: 'Deezer', book: 'Open Library' })[kind] || 'TMDB';
 
-/** Kind (movie | tv | game) for the first tag that has a source, if any. */
+/** Kind (movie | tv | game | music | book) for the first tag that has a source, if any. */
 export const kindForTags = (tags) => {
   const map = app.forum.attribute('marqueeTags') || {};
   return (tags || []).map((tag) => map[tag.id()]).find(Boolean);

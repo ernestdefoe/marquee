@@ -85,6 +85,10 @@ await shot('season-browser.jpg');
 await go('/d/30');
 await shot('music-hero.jpg');
 
+// Books: a book discussion.
+await go('/d/37');
+await shot('book-hero.jpg');
+
 // Episode references in a post, with the hover preview.
 await go('/d/12/3');
 await page.evaluate(() => document.querySelector('.MarqueeRef--episode')?.closest('.PostStream-item')?.scrollIntoView({ block: 'center' }));
@@ -134,6 +138,19 @@ await page.keyboard.type('rumours', { delay: 60 });
 await page.waitForSelector('.Marquee-results--music .Marquee-result', { timeout: 15000 });
 await settle(800);
 await shot('music-search.png');
+
+// And for books.
+await page.evaluate(() => {
+  app.composer.fields.title('');
+  app.composer.fields.marquee = null;
+  app.composer.fields.tags = [app.store.all('tags').find((t) => t.slug() === 'books')];
+  m.redraw.sync();
+});
+await page.click('.DiscussionComposer-title');
+await page.keyboard.type('the hobbit', { delay: 60 });
+await page.waitForSelector('.Marquee-results--book .Marquee-result', { timeout: 15000 });
+await settle(800);
+await shot('book-search.png');
 
 await page.evaluate(() => {
   app.composer.fields.title('');
