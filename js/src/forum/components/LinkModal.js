@@ -55,72 +55,74 @@ export default class LinkModal extends FormModal {
 
     return (
       <div className="Modal-body">
-        <div className="Form-group">
-          {link ? (
-            <div className="MarqueeLinkModal-current">
-              {link.poster ? <img src={img(link.poster, 'w92')} alt="" /> : <span className="Marquee-noPoster" />}
-              <span>
-                <b>{link.year ? `${link.title} (${link.year})` : link.title}</b>
-                <small>{sourceName(link.kind)}</small>
-              </span>
-              <Button className="Button Button--link" icon="fas fa-times" onclick={() => (this.link = null)}>
-                {t('link.remove')}
-              </Button>
+        <div className="Form">
+          <div className="Form-group">
+            {link ? (
+              <div className="MarqueeLinkModal-current">
+                {link.poster ? <img src={img(link.poster, 'w92')} alt="" /> : <span className="Marquee-noPoster" />}
+                <span>
+                  <b>{link.year ? `${link.title} (${link.year})` : link.title}</b>
+                  <small>{sourceName(link.kind)}</small>
+                </span>
+                <Button className="Button Button--link" icon="fas fa-times" onclick={() => (this.link = null)}>
+                  {t('link.remove')}
+                </Button>
+              </div>
+            ) : (
+              <p className="helpText">{t('link.none')}</p>
+            )}
+          </div>
+
+          {this.kind ? (
+            <div className="Form-group">
+              <label>{t('link.search_label')}</label>
+              <TitlePicker
+                wrapper="div"
+                value={this.query}
+                oninput={(value) => (this.query = value)}
+                kind={this.kind}
+                linked={false}
+                onpick={(picked) => {
+                  this.link = picked;
+                  // The page knows the linked episode's number; its name comes from the season.
+                  if (current && current.season && current.episode) {
+                    loadSeason(current.media.id(), current.season).then(
+                      (season) => {
+                        const episode = season.episodes.find((e) => e.n === current.episode);
+                        if (episode && this.link && this.link.episode && this.link.episode.n === episode.n) {
+                          this.link.episode = episode;
+                          m.redraw();
+                        }
+                      },
+                      () => {}
+                    );
+                  }
+
+                  this.query = '';
+                }}
+              />
             </div>
-          ) : (
-            <p className="helpText">{t('link.none')}</p>
-          )}
-        </div>
+          ) : null}
 
-        {this.kind ? (
+          {link && link.seasons && link.seasons.length ? (
+            <div className="Form-group">
+              <ScopePicker link={link} onchange={() => m.redraw()} />
+            </div>
+          ) : null}
+
+          {link ? (
+            <div className="Form-group">
+              <Switch state={this.rename} onchange={(value) => (this.rename = value)}>
+                {t('link.rename', { title: <b>{titleFor(link, link.season, link.episode)}</b> })}
+              </Switch>
+            </div>
+          ) : null}
+
           <div className="Form-group">
-            <label>{t('link.search_label')}</label>
-            <TitlePicker
-              wrapper="div"
-              value={this.query}
-              oninput={(value) => (this.query = value)}
-              kind={this.kind}
-              linked={false}
-              onpick={(picked) => {
-                this.link = picked;
-                // The page knows the linked episode's number; its name comes from the season.
-                if (current && current.season && current.episode) {
-                  loadSeason(current.media.id(), current.season).then(
-                    (season) => {
-                      const episode = season.episodes.find((e) => e.n === current.episode);
-                      if (episode && this.link && this.link.episode && this.link.episode.n === episode.n) {
-                        this.link.episode = episode;
-                        m.redraw();
-                      }
-                    },
-                    () => {}
-                  );
-                }
-
-                this.query = '';
-              }}
-            />
+            <Button className="Button Button--primary Button--block" type="submit" loading={this.saving}>
+              {t('link.save')}
+            </Button>
           </div>
-        ) : null}
-
-        {link && link.seasons && link.seasons.length ? (
-          <div className="Form-group">
-            <ScopePicker link={link} onchange={() => m.redraw()} />
-          </div>
-        ) : null}
-
-        {link ? (
-          <div className="Form-group">
-            <Switch state={this.rename} onchange={(value) => (this.rename = value)}>
-              {t('link.rename', { title: <b>{titleFor(link, link.season, link.episode)}</b> })}
-            </Switch>
-          </div>
-        ) : null}
-
-        <div className="Form-group">
-          <Button className="Button Button--primary Button--block" type="submit" loading={this.saving}>
-            {t('link.save')}
-          </Button>
         </div>
       </div>
     );
