@@ -1,5 +1,6 @@
 import app from 'flarum/forum/app';
 import Component from 'flarum/common/Component';
+import ItemList from 'flarum/common/utils/ItemList';
 import listItems from 'flarum/common/helpers/listItems';
 import classList from 'flarum/common/utils/classList';
 import abbreviateNumber from 'flarum/common/utils/abbreviateNumber';
@@ -276,16 +277,82 @@ export default class MediaHero extends Component {
     }
   }
 
+  /**
+   * The buttons under the card. Other extensions add to it: each gets the
+   * discussion, the linked media and what this card is about (season, episode).
+   */
+  actionItems() {
+    const { media, season } = this.attrs.link;
+    const d = media.details();
+    const s = subject(...this.subjectArgs());
+    const pick = pickFromMedia(media);
+    const ep = this.episode();
+    const source = sourceName(media.kind());
+    const items = new ItemList();
+
+    items.add(
+      'source',
+      <a className="Button Button--primary" href={s.url} target="_blank" rel="noopener noreferrer">
+        {s.linkLabel || t('hero.view_on', { source })}
+      </a>,
+      100
+    );
+
+    if (ep) {
+      items.add(
+        'episode',
+        <button type="button" className="Button" onclick={() => app.modal.show(EpisodeModal, { link: pick, season: this.seasonData, episode: ep })}>
+          <i className="fas fa-info-circle" aria-hidden="true" /> {t('hero.episode_details')}
+        </button>,
+        90
+      );
+    } else if (d.trailer) {
+      items.add(
+        'trailer',
+        <a className="Button" href={`https://www.youtube.com/watch?v=${d.trailer}`} target="_blank" rel="noopener noreferrer">
+          <i className="fas fa-play" aria-hidden="true" /> {t('hero.trailer')}
+        </a>,
+        90
+      );
+    }
+
+    if (season && app.session.user) {
+      items.add(
+        'discussShow',
+        <button type="button" className="Button" onclick={() => startDiscussion(pick)}>
+          <i className="fas fa-tv" aria-hidden="true" /> {t('hero.discuss_show')}
+        </button>,
+        80
+      );
+    }
+
+    items.add(
+      'attribution',
+      <span className="MarqueeHero-attribution">{t(`hero.attribution_${source.toLowerCase().replace(' ', '_')}`)}</span>,
+      -100
+    );
+
+    return items;
+  }
+
+  episode() {
+    const { episode } = this.attrs.link;
+    return (episode && this.seasonData?.episodes.find((e) => e.n === episode)) || null;
+  }
+
+  subjectArgs() {
+    const { media, season, episode } = this.attrs.link;
+    return [media, media.details(), season, episode, this.seasonData];
+  }
+
   view() {
     const { discussion, link } = this.attrs;
     const { media, season, episode } = link;
-    const d = media.details();
-    const s = subject(media, d, season, episode, this.seasonData);
+    const s = subject(...this.subjectArgs());
     const badges = discussion.badges().toArray();
     const tags = discussion.tags && discussion.tags();
     const pick = pickFromMedia(media);
-    const ep = episode && this.seasonData?.episodes.find((e) => e.n === episode);
-    const source = sourceName(media.kind());
+    const ep = this.episode();
 
     return (
       <header className={classList('Hero DiscussionHero MarqueeHero', `MarqueeHero--${media.kind()}`, { 'MarqueeHero--episode': ep })}>
@@ -351,30 +418,7 @@ export default class MediaHero extends Component {
 
             {pick.seasons && pick.seasons.length ? <SeasonBrowser link={pick} season={season} episode={episode} /> : null}
 
-            <div className="MarqueeHero-links">
-              <a className="Button Button--primary" href={s.url} target="_blank" rel="noopener noreferrer">
-                {s.linkLabel || t('hero.view_on', { source })}
-              </a>
-              {ep ? (
-                <button
-                  type="button"
-                  className="Button"
-                  onclick={() => app.modal.show(EpisodeModal, { link: pick, season: this.seasonData, episode: ep })}
-                >
-                  <i className="fas fa-info-circle" aria-hidden="true" /> {t('hero.episode_details')}
-                </button>
-              ) : d.trailer ? (
-                <a className="Button" href={`https://www.youtube.com/watch?v=${d.trailer}`} target="_blank" rel="noopener noreferrer">
-                  <i className="fas fa-play" aria-hidden="true" /> {t('hero.trailer')}
-                </a>
-              ) : null}
-              {season && app.session.user ? (
-                <button type="button" className="Button" onclick={() => startDiscussion(pick)}>
-                  <i className="fas fa-tv" aria-hidden="true" /> {t('hero.discuss_show')}
-                </button>
-              ) : null}
-              <span className="MarqueeHero-attribution">{t(`hero.attribution_${source.toLowerCase().replace(' ', '_')}`)}</span>
-            </div>
+            <div className="MarqueeHero-links">{this.actionItems().toArray()}</div>
           </div>
         </div>
       </header>

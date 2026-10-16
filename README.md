@@ -105,6 +105,27 @@ php flarum cache:clear
 - **Your keys stay on the server.** The TMDB token and the Twitch secret are never sent to browsers. Searches go through your forum.
 - **Who can link.** Anyone who can start discussions. Changing or removing the link on an existing discussion (**Change linked title** in its controls menu) takes the same permission as renaming it.
 
+## For extension developers
+
+Marquee leaves two seams for companion extensions, so they never reach into its internals:
+
+```js
+import { extend } from 'flarum/common/extend';
+import MediaHero from 'ext:ernestdefoe/marquee/forum/components/MediaHero';
+import posterUrl from 'ext:ernestdefoe/marquee/forum/utils/posterUrl';
+
+// Add a button under the card. this.attrs.discussion and this.attrs.link
+// ({ media, season, episode, seasonData }) say what the card is about.
+extend(MediaHero.prototype, 'actionItems', function (items) {
+  items.add('myAction', <button className="Button">…</button>, 50);
+});
+
+// A stored poster path as a URL, at a TMDB size (w92 … w1280), for any source.
+posterUrl(media.poster(), 'w185');
+```
+
+Linked titles are the `marquee-media` resource (`Ernestdefoe\Marquee\Media` on the server), so a companion can relate its own records to them and add fields with `Extend\ApiResource(MediaResource::class)`. Require `ernestdefoe/marquee` in your `composer.json` so Flarum loads Marquee first.
+
 ## Data, attribution and licensing
 
 - Movie and TV data and images come from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB. TMDB's API is free for non-commercial use; a forum that makes money should check [TMDB's terms](https://www.themoviedb.org/api-terms-of-use).

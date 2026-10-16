@@ -17,6 +17,8 @@ import { applyPrefill } from './startDiscussion';
 import CommentPost from 'flarum/forum/components/CommentPost';
 import { decorate } from './refs';
 import { attachSuggest } from './suggest';
+// Registered for companion extensions (ext:ernestdefoe/marquee/forum/utils/posterUrl).
+import './utils/posterUrl';
 
 app.initializers.add('ernestdefoe-marquee', () => {
   app.store.models['marquee-media'] = Media;
