@@ -9,6 +9,8 @@ use Ernestdefoe\Marquee\Source\DeezerAlbums;
 use Ernestdefoe\Marquee\Source\DeezerClient;
 use Ernestdefoe\Marquee\Source\OpenLibraryBooks;
 use Ernestdefoe\Marquee\Source\OpenLibraryClient;
+use Ernestdefoe\Marquee\Translation\DeepL;
+use Ernestdefoe\Marquee\Translation\Translator;
 use Ernestdefoe\Marquee\Source\IgdbGames;
 use Flarum\Formatter\Formatter;
 use Ernestdefoe\Marquee\Source\TmdbClient;
@@ -361,6 +363,75 @@ class MarqueeTest extends TestCase
     {
         $this->expectException(\Ernestdefoe\Marquee\Source\SourceException::class);
         $this->app()->getContainer()->make(OpenLibraryBooks::class)->details('../../admin');
+    }
+
+    #[Test]
+    public function deepl_target_codes_follow_the_data_language(): void
+    {
+        $this->assertNull(DeepL::target('en-US'));
+        $this->assertSame('FR', DeepL::target('fr-FR'));
+        $this->assertSame('DE', DeepL::target('de'));
+        $this->assertSame('PT-BR', DeepL::target('pt-BR'));
+        $this->assertSame('PT-PT', DeepL::target('pt'));
+        $this->assertSame('ZH-HANS', DeepL::target('zh-CN'));
+        $this->assertSame('ZH-HANT', DeepL::target('zh-TW'));
+        $this->assertSame('NB', DeepL::target('no'));
+    }
+
+    #[Test]
+    public function game_text_is_translated_once_and_reused_while_the_english_is_unchanged(): void
+    {
+        $this->setting(Settings::LANGUAGE, 'fr');
+        $this->setting(Settings::DEEPL_KEY, 'test-key:fx');
+
+        $deepl = new class extends DeepL {
+            public int $calls = 0;
+            public bool $fail = false;
+
+            public function translate(string $key, array $texts, string $target): array
+            {
+                $this->calls++;
+                if ($this->fail) {
+                    throw new \RuntimeException('quota');
+                }
+
+                return array_map(fn ($t) => "[$target] $t", $texts);
+            }
+        };
+        $c = $this->app()->getContainer();
+        $translator = new Translator($deepl, $c->make(\Ernestdefoe\Marquee\Source\DataLanguage::class), $c->make(\Flarum\Settings\SettingsRepositoryInterface::class), new \Psr\Log\NullLogger());
+
+        $game = ['title' => 'Hades', 'overview' => 'Defy the god of the dead.', 'genres' => ['Role-playing (RPG)', ''], 'modes' => ['Single player'], 'platforms' => ['PC']];
+        $fr = $translator->apply('game', $game, null);
+
+        $this->assertSame(1, $deepl->calls);
+        $this->assertSame('[FR] Defy the god of the dead.', $fr['overview']);
+        $this->assertSame(['[FR] Role-playing (RPG)', ''], $fr['genres']);
+        $this->assertSame(['[FR] Single player'], $fr['modes']);
+        $this->assertSame(['PC'], $fr['platforms']);
+        $this->assertSame('Hades', $fr['title']);
+        $this->assertSame('deepl', $fr['translation']['by']);
+
+        // A refresh with the same English reuses the stored translation: no second call.
+        $again = $translator->apply('game', $game, $fr);
+        $this->assertSame(1, $deepl->calls);
+        $this->assertSame($fr['overview'], $again['overview']);
+
+        // New English is translated again.
+        $changed = $translator->apply('game', ['overview' => 'New text.'] + $game, $fr);
+        $this->assertSame(2, $deepl->calls);
+        $this->assertSame('[FR] New text.', $changed['overview']);
+
+        // DeepL failing leaves the English: linking still works.
+        $deepl->fail = true;
+        $failed = $translator->apply('game', ['overview' => 'Other text.'] + $game, $fr);
+        $this->assertSame('Other text.', $failed['overview']);
+        $this->assertArrayNotHasKey('translation', $failed);
+
+        // Movies come translated from TMDB already (English forums: DeepL::target() is null).
+        $deepl->fail = false;
+        $this->assertSame($game, $translator->apply('movie', $game, null));
+        $this->assertSame(3, $deepl->calls);
     }
 
     #[Test]

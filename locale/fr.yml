@@ -6,8 +6,10 @@ ernestdefoe-marquee:
     igdb_help: "Les jeux viennent d'IGDB, géré par Twitch. <a>Enregistrez une application dans la console développeur Twitch</a> (type de client Confidential), créez un secret client, puis collez les deux ici. Le secret reste sur le serveur. IGDB est gratuit pour les forums non commerciaux ; un forum commercial a besoin d'un partenariat avec IGDB."
     igdb_client_id: Client ID
     igdb_client_secret: Secret client
+    deepl_label: Clé API DeepL (facultative)
+    deepl_help: "Les données de jeux d'IGDB et la plupart des résumés de livres d'Open Library sont en anglais. Avec une clé DeepL, Marquee traduit les résumés, genres et sujets des jeux et des livres dans la langue des données, une fois par titre, et garde la traduction. <a>Obtenez une clé API DeepL gratuite</a> : l'offre gratuite traduit 500 000 caractères par mois, assez pour des milliers de titres. La clé reste sur le serveur."
     language_label: Langue des données
-    language_help: "La langue des titres, résumés et genres des films et séries, sous forme de code comme fr, fr-FR ou pt-BR. Laissez vide pour suivre la langue par défaut du forum. Les données de jeux d'IGDB sont en anglais (seuls des noms japonais et coréens existent) les albums gardent les titres des artistes, et les titres, couvertures et éditeurs des livres la suivent quand Open Library a une édition dans cette langue (les résumés de livres sont surtout en anglais). Les titres déjà liés changent de langue à leur prochaine mise à jour."
+    language_help: "La langue des titres, résumés et genres des films et séries, sous forme de code comme fr, fr-FR ou pt-BR. Laissez vide pour suivre la langue par défaut du forum. Les données de jeux d'IGDB sont en anglais (seuls des noms japonais et coréens existent), sauf avec une clé DeepL les albums gardent les titres des artistes, et les titres, couvertures et éditeurs des livres la suivent quand Open Library a une édition dans cette langue (les résumés de livres sont surtout en anglais). Les titres déjà liés changent de langue à leur prochaine mise à jour."
     language_placeholder: "La langue du forum"
     list_posters_label: Afficher les affiches dans la liste des discussions
     list_posters_help: "Une petite affiche à côté de chaque discussion liée. Désactivez-la si une autre extension, comme FoF Discussion Thumbnail, affiche déjà des miniatures."
@@ -125,6 +127,7 @@ ernestdefoe-marquee:
       attribution_igdb: Données de jeux d'IGDB.com
       attribution_deezer: Données et pochettes d'albums de Deezer
       attribution_open_library: Données et couvertures de livres d'Open Library
+      translated_deepl: Traduit par DeepL
       authors: Auteurs
       book_rating: "{rating} · {count} notes sur Open Library"
       want_to_read: "{count} veulent le lire"

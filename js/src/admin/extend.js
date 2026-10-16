@@ -53,6 +53,24 @@ export default [
         </div>
       );
     }, 95)
+    // Optional: translates game and book text, which only comes in English.
+    .customSetting(function () {
+      return (
+        <div className="Form-group">
+          <label for="marquee-deepl-key">{t('deepl_label')}</label>
+          <div className="helpText">
+            {t('deepl_help', { a: <a href="https://www.deepl.com/pro-api" target="_blank" rel="noopener noreferrer" /> })}
+          </div>
+          <input
+            id="marquee-deepl-key"
+            className="FormControl"
+            type="password"
+            autocomplete="off"
+            bidi={this.setting('ernestdefoe-marquee.deepl_key')}
+          />
+        </div>
+      );
+    }, 92)
     .setting(
       () => ({
         setting: 'ernestdefoe-marquee.language',

@@ -328,7 +328,10 @@ export default class MediaHero extends Component {
 
     items.add(
       'attribution',
-      <span className="MarqueeHero-attribution">{t(`hero.attribution_${source.toLowerCase().replace(' ', '_')}`)}</span>,
+      <span className="MarqueeHero-attribution">
+        {t(`hero.attribution_${source.toLowerCase().replace(' ', '_')}`)}
+        {d.translation?.by === 'deepl' ? [' · ', t('hero.translated_deepl')] : null}
+      </span>,
       -100
     );
 

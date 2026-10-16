@@ -7,6 +7,7 @@ use Ernestdefoe\Marquee\Source\Outage;
 use Ernestdefoe\Marquee\Source\SeasonSource;
 use Ernestdefoe\Marquee\Source\SourceException;
 use Ernestdefoe\Marquee\Source\Sources;
+use Ernestdefoe\Marquee\Translation\Translator;
 
 /**
  * Titles and seasons are fetched once and kept. A stored copy is refreshed only
@@ -18,7 +19,7 @@ class MediaRepository
     private const MEDIA_TTL_DAYS = 7;
     private const SEASON_TTL_DAYS = 3;
 
-    public function __construct(private Sources $sources, private Outage $outage)
+    public function __construct(private Sources $sources, private Outage $outage, private Translator $translator)
     {
     }
 
@@ -42,6 +43,9 @@ class MediaRepository
             }
             throw $e;
         }
+
+        // Outside the outage guard: DeepL failing says nothing about the source.
+        $data = $this->translator->apply($kind, $data, $media?->data);
 
         $media ??= new Media();
         $media->forceFill([
