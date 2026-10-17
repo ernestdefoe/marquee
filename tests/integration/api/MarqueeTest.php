@@ -354,6 +354,12 @@ class MarqueeTest extends TestCase
         $this->assertSame('Berkley', $same['publisher']);
         $this->assertNull($same['published']);
 
+        // So does an edition that only adds to the work's title (Open Library's pick for Klara and the Sun).
+        $klara = ['key' => '/works/OL20883297W', 'title' => 'Klara and the Sun', 'editions' => ['docs' => [['title' => 'Klara and the Sun * Christmas EDI', 'language' => ['eng']]]]];
+        $extra = OpenLibraryBooks::normalize('OL20883297W', $klara, ['title' => 'Klara and the Sun'], [], 'en');
+        $this->assertSame('Klara and the Sun', $extra['title']);
+        $this->assertNull($extra['originalTitle']);
+
         $this->assertNull(OpenLibraryClient::image('b', '"><script>'));
         $this->assertNull(OpenLibraryClient::image('b', -1));
     }

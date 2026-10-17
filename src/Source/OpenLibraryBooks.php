@@ -47,7 +47,7 @@ class OpenLibraryBooks implements Source
 
         return array_values(array_map(function (array $doc) use ($lang) {
             $edition = self::edition($doc, $lang);
-            $translated = $edition && isset($edition['title']) && mb_strtolower($edition['title']) !== mb_strtolower($doc['title']);
+            $translated = self::translated($edition, $doc['title']);
 
             return [
                 'id' => self::workId($doc['key'] ?? ''),
@@ -92,10 +92,9 @@ class OpenLibraryBooks implements Source
     {
         $edition = self::edition($doc, $lang);
         $workTitle = $work['title'] ?? $doc['title'];
-        // Editions in the work's own language often carry sloppy casing ("Dune messiah"):
-        // only a real translation replaces the work's title and subtitle. The cover comes
+        // Only a real translation replaces the work's title and subtitle. The cover comes
         // from the edition either way, since a work's own cover can be any language's.
-        $translated = $edition && isset($edition['title']) && mb_strtolower($edition['title']) !== mb_strtolower($workTitle);
+        $translated = self::translated($edition, $workTitle);
         $title = $translated ? $edition['title'] : $workTitle;
 
         $people = [];
@@ -141,6 +140,16 @@ class OpenLibraryBooks implements Source
         $marc = self::MARC[$lang] ?? null;
 
         return $edition && $marc && in_array($marc, $edition['language'] ?? [], true) ? $edition : null;
+    }
+
+    /**
+     * Editions in the work's own language carry sloppy casing ("Dune messiah") or
+     * extras ("Klara and the Sun * Christmas EDI"): a title that still starts with
+     * the work's own is that edition, not a translation.
+     */
+    private static function translated(?array $edition, string $workTitle): bool
+    {
+        return isset($edition['title']) && ! str_starts_with(mb_strtolower($edition['title']), mb_strtolower($workTitle));
     }
 
     private static function workId(string $key): string
