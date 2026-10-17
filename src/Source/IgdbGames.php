@@ -16,7 +16,7 @@ class IgdbGames implements Source
      */
     private const GAME_TYPES = '(0,4,8,9,10,11)';
 
-    private const DETAIL_FIELDS = 'name,url,summary,first_release_date,aggregated_rating,aggregated_rating_count,'
+    private const DETAIL_FIELDS = 'name,slug,url,summary,first_release_date,aggregated_rating,aggregated_rating_count,'
         .'rating,rating_count,cover.image_id,artworks.image_id,artworks.width,artworks.height,artworks.alpha_channel,screenshots.image_id,platforms.name,'
         .'platforms.abbreviation,genres.name,game_modes.name,involved_companies.company.name,'
         .'involved_companies.developer,involved_companies.publisher,videos.video_id,videos.name,'
@@ -160,6 +160,8 @@ class IgdbGames implements Source
             ] : null,
             'trailer' => $trailer,
             'url' => str_starts_with($g['url'] ?? '', 'https://www.igdb.com/') ? $g['url'] : null,
+            // Wikidata knows games by this (P5794); it leads to Wikipedia's description in other languages.
+            'slug' => preg_match('/^[a-z0-9-]{1,100}$/', $g['slug'] ?? '') ? $g['slug'] : null,
         ];
     }
 

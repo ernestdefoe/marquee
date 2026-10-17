@@ -330,6 +330,15 @@ export default class MediaHero extends Component {
       'attribution',
       <span className="MarqueeHero-attribution">
         {t(`hero.attribution_${source.toLowerCase().replace(' ', '_')}`)}
+        {d.wikipedia?.url
+          ? [
+              ' · ',
+              t('hero.from_wikipedia', {
+                a: <a href={d.wikipedia.url} target="_blank" rel="noopener noreferrer" />,
+                license: <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer license" />,
+              }),
+            ]
+          : null}
         {d.translation?.by === 'deepl' ? [' · ', t('hero.translated_deepl')] : null}
       </span>,
       -100

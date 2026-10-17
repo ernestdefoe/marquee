@@ -47,6 +47,11 @@ class Translator
         $target = DeepL::target($this->language->get());
         $fields = self::FIELDS[$kind] ?? null;
 
+        // Already in the data language, from Wikipedia.
+        if ($fields && isset($data['wikipedia'])) {
+            $fields = array_values(array_diff($fields, ['overview']));
+        }
+
         if ($key === '' || $target === null || $fields === null) {
             return $data;
         }
