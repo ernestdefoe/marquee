@@ -3,7 +3,7 @@ ernestdefoe-marquee:
     tmdb_token_label: Jeton d'accès en lecture de l'API TMDB
     tmdb_token_help: "Les films et les séries viennent de The Movie Database. <a>Créez un jeton dans les paramètres API de TMDB</a> et collez ici le long API Read Access Token. Il reste sur le serveur."
     igdb_label: Identifiants d'application Twitch pour IGDB
-    igdb_help: "Les jeux viennent d'IGDB, géré par Twitch. <a>Enregistrez une application dans la console développeur Twitch</a> (type de client Confidential), créez un secret client, puis collez les deux ici. Le secret reste sur le serveur. IGDB est gratuit pour les forums non commerciaux ; un forum commercial a besoin d'un partenariat avec IGDB."
+    igdb_help: "Les jeux viennent d'IGDB, géré par Twitch. <a>Enregistrez une application dans la console développeur Twitch</a> (Twitch exige d'abord l'authentification à deux facteurs sur votre compte ; type de client Confidential, URL de redirection https://localhost), créez un secret client, puis collez les deux ici. Le secret reste sur le serveur. IGDB est gratuit pour les forums non commerciaux ; un forum commercial a besoin d'un partenariat avec IGDB."
     igdb_client_id: Client ID
     igdb_client_secret: Secret client
     deepl_label: Clé API DeepL (facultative)
