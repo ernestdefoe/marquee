@@ -252,6 +252,7 @@
       }
 
       > .DiscussionHero-items,
+      > .MarqueeHero-headline,
       > .DiscussionHero-title,
       > .MarqueeHero-meta {
         grid-column: 2;
@@ -261,6 +262,10 @@
     &-poster {
       grid-row: span 3;
       align-self: start;
+    }
+
+    &--renamed &-poster {
+      grid-row: span 4;
     }
 
     &-meta {
@@ -416,6 +421,22 @@
 
     @media (max-width: 767px) {
       font-size: 22px;
+    }
+  }
+
+  // A renamed discussion's own title, above the work's.
+  .MarqueeHero-headline {
+    color: #fff;
+    opacity: 0.85;
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.3;
+    text-align: left;
+    margin: 0 0 4px;
+    text-wrap: balance;
+
+    @media (max-width: 767px) {
+      font-size: 14px;
     }
   }
 

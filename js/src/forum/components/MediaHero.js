@@ -7,7 +7,7 @@ import abbreviateNumber from 'flarum/common/utils/abbreviateNumber';
 import tagsLabel from 'ext:flarum/tags/common/helpers/tagsLabel';
 import SeasonBrowser from './SeasonBrowser';
 import EpisodeModal from './EpisodeModal';
-import { t, text, img, date, runtime, sourceName, pickFromMedia } from '../util';
+import { t, text, img, date, runtime, sourceName, pickFromMedia, titleFor } from '../util';
 import { loadSeason, primeSeason } from '../api';
 import { startDiscussion } from '../startDiscussion';
 
@@ -365,9 +365,20 @@ export default class MediaHero extends Component {
     const tags = discussion.tags && discussion.tags();
     const pick = pickFromMedia(media);
     const ep = this.episode();
+    // The card is titled by the work itself. A discussion renamed to something
+    // else ("This indie game is one of my favourites") keeps that as a headline
+    // above it. Until an episode's data arrives its title isn't known yet.
+    const title = discussion.title();
+    const workTitle = episode && !ep ? title : titleFor(pick, season, ep);
+    const renamed = workTitle !== title;
 
     return (
-      <header className={classList('Hero DiscussionHero MarqueeHero', `MarqueeHero--${media.kind()}`, { 'MarqueeHero--episode': ep })}>
+      <header
+        className={classList('Hero DiscussionHero MarqueeHero', `MarqueeHero--${media.kind()}`, {
+          'MarqueeHero--episode': ep,
+          'MarqueeHero--renamed': renamed,
+        })}
+      >
         {s.backdrop ? <div className="MarqueeHero-backdrop" style={{ backgroundImage: `url(${s.backdrop})` }} /> : null}
         <div className="container MarqueeHero-inner">
           {s.poster ? (
@@ -389,7 +400,8 @@ export default class MediaHero extends Component {
                 </li>
               ) : null}
             </ul>
-            <h1 className="DiscussionHero-title">{discussion.title()}</h1>
+            {renamed ? <h1 className="MarqueeHero-headline">{title}</h1> : null}
+            {renamed ? <h2 className="DiscussionHero-title">{workTitle}</h2> : <h1 className="DiscussionHero-title">{title}</h1>}
             <ul className="MarqueeHero-meta">
               {s.meta.filter(Boolean).map((part) => (
                 <li>{part}</li>
