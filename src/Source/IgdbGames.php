@@ -19,6 +19,15 @@ class IgdbGames implements Source
      */
     public const GAME_TYPES = '(0,3,4,8,9,10,11)';
 
+    /**
+     * Editions of another game (version_parent set) are left out, so a search
+     * isn't a wall of Deluxe and GOTY editions; except bundles, because IGDB
+     * files some real releases as a bundle that is an edition of its game:
+     * "Shovel Knight: Treasure Trove", "Scott Pilgrim vs. the World: The Game -
+     * Complete Edition" (Wlork, Discuss d/40107 #73).
+     */
+    public const WHERE = 'where game_type = '.self::GAME_TYPES.' & (version_parent = null | game_type = '.self::BUNDLE.');';
+
     private const BUNDLE = 3;
 
     private const DETAIL_FIELDS = 'name,slug,url,summary,first_release_date,aggregated_rating,aggregated_rating_count,'
@@ -49,7 +58,7 @@ class IgdbGames implements Source
         $results = $this->igdb->query('games', implode(' ', [
             'search '.IgdbClient::quote($query).';',
             'fields name,game_type,first_release_date,total_rating_count,cover.image_id,platforms.abbreviation,platforms.name,genres.name;',
-            'where game_type = '.self::GAME_TYPES.' & version_parent = null;',
+            self::WHERE,
             'limit 50;',
         ]));
 

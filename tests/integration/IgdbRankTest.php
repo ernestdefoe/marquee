@@ -19,6 +19,13 @@ class IgdbRankTest extends TestCase
     }
 
     #[Test]
+    public function bundles_that_are_editions_are_searched(): void
+    {
+        // "Shovel Knight: Treasure Trove" is a bundle AND an edition of Shovel Knight.
+        $this->assertStringContainsString('(version_parent = null | game_type = 3)', IgdbGames::WHERE);
+    }
+
+    #[Test]
     public function a_rated_bundle_that_is_the_game_comes_first(): void
     {
         // What IGDB answers for "UFO 50": the game itself is a bundle (type 3).
