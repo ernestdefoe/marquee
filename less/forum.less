@@ -400,10 +400,12 @@
 }
 
 // Themes restyle the core hero hard (Warren: transparent background and ink
-// text at 0,4,0). The card is always dark, so its base colours must win.
+// text at 0,4,0; Concourse: `!important` heading colour on the hero and its
+// title). The card is always dark, so its base colours must win, and only an
+// !important at this weight outranks a theme's !important.
 .Hero.DiscussionHero.MarqueeHero.MarqueeHero.MarqueeHero {
-  background: #0b0d11;
-  color: #f2f0eb;
+  background: #0b0d11 !important;
+  color: #f2f0eb !important;
   text-align: left;
   border: 0;
   margin-bottom: 28px;
@@ -413,7 +415,7 @@
   }
 
   .DiscussionHero-title {
-    color: #fff;
+    color: #fff !important;
     font-size: 32px;
     font-weight: 700;
     text-align: left;
