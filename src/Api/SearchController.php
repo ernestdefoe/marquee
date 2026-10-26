@@ -44,7 +44,7 @@ class SearchController implements RequestHandlerInterface
         try {
             $results = $this->cache->remember(
                 // The language is part of the key: switching it must not serve old results.
-                'marquee.search.2.'.$source->kind().'.'.$this->language->get().'.'.md5(mb_strtolower($query)),
+                'marquee.search.3.'.$source->kind().'.'.$this->language->get().'.'.md5(mb_strtolower($query)),
                 86400,
                 fn () => $this->outage->guard($source->kind(), fn () => $source->search($query))
             );

@@ -19,10 +19,42 @@ class IgdbRankTest extends TestCase
     }
 
     #[Test]
-    public function bundles_that_are_editions_are_searched(): void
+    public function editions_are_searched(): void
     {
-        // "Shovel Knight: Treasure Trove" is a bundle AND an edition of Shovel Knight.
-        $this->assertStringContainsString('(version_parent = null | game_type = 3)', IgdbGames::WHERE);
+        // "Shovel Knight: Treasure Trove" (a bundle) and "Romancing SaGa: Minstrel Song Remastered
+        // International Special Edition" (a main game) are both editions of another game.
+        $this->assertStringNotContainsString('version_parent', IgdbGames::WHERE);
+    }
+
+    #[Test]
+    public function an_edition_comes_after_its_game(): void
+    {
+        // IGDB's answers for "Shovel Knight" (2026-10-26).
+        $ranked = IgdbGames::rank([
+            ['id' => 26848, 'name' => 'Shovel Knight: Treasure Trove', 'game_type' => 3, 'version_parent' => 7444, 'total_rating_count' => 123],
+            ['id' => 23910, 'name' => 'Shovel Knight: Specter of Torment', 'game_type' => 4, 'total_rating_count' => 50],
+            ['id' => 7444, 'name' => 'Shovel Knight', 'game_type' => 0, 'total_rating_count' => 549],
+        ], 'Shovel Knight');
+        $this->assertSame([7444, 26848, 23910], array_column($ranked, 'id'));
+
+        // Even with more ratings than its game, or the same.
+        $ranked = IgdbGames::rank([
+            ['id' => 99959, 'name' => 'Mass Effect 2: Ultimate Edition', 'game_type' => 0, 'version_parent' => 74, 'total_rating_count' => 3000],
+            ['id' => 43957, 'name' => "Mass Effect 2: Collector's Edition", 'game_type' => 0, 'version_parent' => 74],
+            ['id' => 74, 'name' => 'Mass Effect 2', 'game_type' => 0, 'total_rating_count' => 2799],
+        ], 'mass effect 2');
+        $this->assertSame([74, 99959, 43957], array_column($ranked, 'id'));
+    }
+
+    #[Test]
+    public function an_edition_named_exactly_comes_first(): void
+    {
+        // Nobody has rated it yet, and the search leaves out the colon.
+        $ranked = IgdbGames::rank([
+            ['id' => 203315, 'name' => 'Romancing SaGa: Minstrel Song Remastered', 'game_type' => 9, 'total_rating_count' => 3],
+            ['id' => 391997, 'name' => 'Romancing SaGa: Minstrel Song Remastered International Special Edition', 'game_type' => 0, 'version_parent' => 203315],
+        ], 'Romancing SaGa Minstrel Song Remastered International Special Edition');
+        $this->assertSame([391997, 203315], array_column($ranked, 'id'));
     }
 
     #[Test]
