@@ -23,23 +23,29 @@ export default class LinkModal extends FormModal {
     this.link = current
       ? { ...pickFromMedia(current.media), season: current.season, episode: current.episode ? { n: current.episode } : null }
       : null;
-    // The page knows the linked episode's number; its name comes from the season.
-    if (current && current.season && current.episode) {
-      loadSeason(current.media.id(), current.season).then(
-        (season) => {
-          const episode = season.episodes.find((e) => e.n === current.episode);
-          if (episode && this.link && this.link.episode && this.link.episode.n === episode.n) {
-            this.link.episode = episode;
-            m.redraw();
-          }
-        },
-        () => {}
-      );
-    }
+    this.current = current;
+    this.nameEpisode();
 
     this.query = '';
     this.rename = true;
     this.saving = false;
+  }
+
+  /** The page knows the linked episode's number; its name comes from the season. */
+  nameEpisode() {
+    const current = this.current;
+    if (!current || !current.season || !current.episode) return;
+
+    loadSeason(current.media.id(), current.season).then(
+      (season) => {
+        const episode = season.episodes.find((e) => e.n === current.episode);
+        if (episode && this.link && this.link.episode && this.link.episode.n === episode.n) {
+          this.link.episode = episode;
+          m.redraw();
+        }
+      },
+      () => {}
+    );
   }
 
   className() {
@@ -85,20 +91,7 @@ export default class LinkModal extends FormModal {
                 linked={false}
                 onpick={(picked) => {
                   this.link = picked;
-                  // The page knows the linked episode's number; its name comes from the season.
-                  if (current && current.season && current.episode) {
-                    loadSeason(current.media.id(), current.season).then(
-                      (season) => {
-                        const episode = season.episodes.find((e) => e.n === current.episode);
-                        if (episode && this.link && this.link.episode && this.link.episode.n === episode.n) {
-                          this.link.episode = episode;
-                          m.redraw();
-                        }
-                      },
-                      () => {}
-                    );
-                  }
-
+                  this.nameEpisode();
                   this.query = '';
                 }}
               />
