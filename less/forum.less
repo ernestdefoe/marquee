@@ -364,8 +364,11 @@
   padding: 8px 14px;
   cursor: pointer;
 
+  // Tinted with the forum's colour: --control-bg is also the modal's own
+  // background, so in the Change linked title window the row looked detached.
   &.active {
     background: var(--control-bg);
+    background: ~"color-mix(in srgb, var(--primary-color) 12%, var(--body-bg))";
     box-shadow: inset 3px 0 0 var(--primary-color);
   }
 
@@ -1162,6 +1165,7 @@
 
   &.active {
     background: var(--control-bg);
+    background: ~"color-mix(in srgb, var(--primary-color) 12%, var(--body-bg))";
   }
 
   img,
