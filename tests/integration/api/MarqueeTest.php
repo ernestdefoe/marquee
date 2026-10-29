@@ -204,6 +204,37 @@ class MarqueeTest extends TestCase
         $this->assertSame(1, Discussion::find(3)->marquee_media_id);
     }
 
+    private function unlinkAsModerator()
+    {
+        // Moderators may rename any discussion; the migration copied that to the link.
+        $this->prepareDatabase(['group_user' => [['user_id' => 2, 'group_id' => 4]]]);
+
+        return fn () => $this->send($this->request('PATCH', '/api/discussions/1', [
+            'authenticatedAs' => 2,
+            'json' => ['data' => ['type' => 'discussions', 'id' => '1', 'attributes' => ['marquee' => null]]],
+        ]));
+    }
+
+    #[Test]
+    public function groups_that_could_rename_keep_changing_any_link(): void
+    {
+        $unlink = $this->unlinkAsModerator();
+
+        $this->assertSame(200, $unlink()->getStatusCode());
+        $this->assertNull(Discussion::find(1)->marquee_media_id);
+    }
+
+    #[Test]
+    public function renaming_any_discussion_no_longer_brings_the_link_with_it(): void
+    {
+        // Wlork, Discuss d/40077 #69: moderators may rename, only admins may relink.
+        $unlink = $this->unlinkAsModerator();
+        $this->database()->table('group_permission')->where('permission', 'discussion.marqueeLink')->delete();
+
+        $this->assertSame(403, $unlink()->getStatusCode());
+        $this->assertSame(1, Discussion::find(1)->marquee_media_id);
+    }
+
     #[Test]
     public function the_link_can_be_changed_and_the_reply_carries_the_details(): void
     {

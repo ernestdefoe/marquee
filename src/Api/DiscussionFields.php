@@ -60,19 +60,20 @@ class DiscussionFields
     }
 
     /**
-     * Changing a posted discussion's linked title: whoever may rename it, except
-     * that an author renaming their own discussion also needs "Change the linked
-     * title of their own discussions" (members have it until an admin removes it).
+     * Changing a posted discussion's linked title: "Change the linked title of
+     * any discussion" (discussion.marqueeLink, tag-scopable), or the author who
+     * may rename their own discussion and has "...of their own discussions".
+     * Neither follows from the rename permission any more.
      */
     public static function canLink(User $actor, Discussion $discussion): bool
     {
-        if (! $actor->can('rename', $discussion)) {
-            return false;
+        if ($actor->can('marqueeLink', $discussion)) {
+            return true;
         }
 
-        return (int) $discussion->user_id !== (int) $actor->id
-            || $actor->hasPermission('discussion.rename')
-            || $actor->hasPermission('ernestdefoe-marquee.linkOwn');
+        return (int) $discussion->user_id === (int) $actor->id
+            && $actor->hasPermission('ernestdefoe-marquee.linkOwn')
+            && $actor->can('rename', $discussion);
     }
 
     private function link(Discussion $discussion, mixed $value): void

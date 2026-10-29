@@ -2,6 +2,7 @@ ernestdefoe-marquee:
   admin:
     permissions:
       link_own: Change the linked title of their own discussions
+      link_any: Change the linked title of any discussion
     tmdb_token_label: TMDB API read access token
     tmdb_token_help: "Movies and TV shows come from The Movie Database. <a>Get a token from your TMDB API settings</a> and paste the long API Read Access Token here. It stays on the server."
     igdb_label: Twitch app credentials for IGDB

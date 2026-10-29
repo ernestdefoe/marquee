@@ -130,5 +130,15 @@ export default [
       }),
       'reply',
       90
+    )
+    // A discussion.* permission: flarum/tags offers it per tag, like core's.
+    .permission(
+      () => ({
+        icon: 'fas fa-link',
+        label: t('permissions.link_any'),
+        permission: 'discussion.marqueeLink',
+      }),
+      'moderate',
+      90
     ),
 ];
