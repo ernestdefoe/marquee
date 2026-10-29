@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $poster
  * @property array $data
  * @property \Carbon\Carbon $fetched_at
+ * @property \Carbon\Carbon|null $describe_at
  */
 class Media extends AbstractModel
 {
@@ -21,7 +22,7 @@ class Media extends AbstractModel
 
     public $timestamps = false;
 
-    protected $casts = ['data' => 'array', 'fetched_at' => 'datetime', 'year' => 'integer'];
+    protected $casts = ['data' => 'array', 'fetched_at' => 'datetime', 'describe_at' => 'datetime', 'year' => 'integer'];
 
     /** @return HasMany<Season, $this> */
     public function seasons(): HasMany

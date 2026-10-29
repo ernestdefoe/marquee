@@ -1,6 +1,6 @@
 import app from 'flarum/forum/app';
 import EpisodeModal from './components/EpisodeModal';
-import { text, img, pad, date, linkFor, pickFromMedia } from './util';
+import { text, img, pad, date, linkFor, pickFromMedia, showScores } from './util';
 import { loadSeason } from './api';
 
 /** A season a chip asked the header's season browser to open. */
@@ -102,7 +102,7 @@ function preview(el, link, season, episode) {
       ep.still ? <img src={img(ep.still, 'w300')} alt="" className="MarqueeRefPreview-still" /> : null,
       <span>
         <b>{text('meta.full_episode_label', { season: pad(season.number), episode: pad(ep.n), name: ep.title })}</b>
-        <small>{[date(ep.date), ep.score ? `★ ${ep.score}%` : null].filter(Boolean).join(' · ')}</small>
+        <small>{[date(ep.date), ep.score && showScores() ? `★ ${ep.score}%` : null].filter(Boolean).join(' · ')}</small>
       </span>,
     ]);
   });

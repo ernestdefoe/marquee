@@ -3,7 +3,7 @@ import Component from 'flarum/common/Component';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import classList from 'flarum/common/utils/classList';
 import EpisodeModal from './EpisodeModal';
-import { t, img, pad, date, runtime } from '../util';
+import { t, img, pad, date, runtime, showScores } from '../util';
 import { loadSeason } from '../api';
 import { seasonRequest } from '../refs';
 
@@ -72,7 +72,7 @@ export default class SeasonBrowser extends Component {
                   <b>{s.name}</b>
                   {s.number === linked && !current ? here : null}
                   <small>{[s.year, t('meta.episodes_count', { count: s.episodes })].filter(Boolean).map((p, i) => [i ? ' · ' : '', p])}</small>
-                  {s.score ? (
+                  {s.score && showScores() ? (
                     <small>
                       <i className="fas fa-star" aria-hidden="true" /> {s.score}%
                     </small>
@@ -108,7 +108,7 @@ export default class SeasonBrowser extends Component {
                         {season.number === linked && e.n === current ? here : null}
                         <small>
                           {[date(e.date), runtime(e.runtime)].filter(Boolean).join(' · ')}
-                          {e.score ? [' · ', <i className="fas fa-star" aria-hidden="true" />, ` ${e.score}%`] : null}
+                          {e.score && showScores() ? [' · ', <i className="fas fa-star" aria-hidden="true" />, ` ${e.score}%`] : null}
                         </small>
                         {e.overview ? <span className="MarqueeSeasons-overview">{e.overview}</span> : null}
                       </span>

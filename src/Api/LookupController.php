@@ -45,7 +45,8 @@ class LookupController implements RequestHandlerInterface
         }
 
         try {
-            $media = $this->media->resolve($kind, $id);
+            // Quick: the description in the data language follows after the response.
+            $media = $this->media->resolve($kind, $id, true);
         } catch (SourceException) {
             return new JsonResponse(['errors' => [['status' => '502', 'code' => 'source_unavailable']]], 502);
         }

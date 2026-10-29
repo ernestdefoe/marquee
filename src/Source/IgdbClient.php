@@ -95,7 +95,8 @@ class IgdbClient
         }
 
         try {
-            $response = $this->http()->post(self::TOKEN_URL, ['query' => [
+            // In the body, not the URL: a failed request's message quotes the URL, and the secret must never reach a log.
+            $response = $this->http()->post(self::TOKEN_URL, ['form_params' => [
                 'client_id' => $this->settings->get(Settings::IGDB_CLIENT_ID),
                 'client_secret' => $this->settings->get(Settings::IGDB_CLIENT_SECRET),
                 'grant_type' => 'client_credentials',

@@ -41,6 +41,55 @@ class Bridge
     }
 
     /**
+     * The item for a title when no id links it: a search within one class
+     * (Q7889 = video game), accepted only when a label is the title exactly
+     * (punctuation and case aside) and the year of publication agrees within a
+     * year, so a 2018 God of War never stands in for the 2005 one.
+     */
+    public function find(string $title, ?int $year, string $class): ?string
+    {
+        $wanted = self::plain($title);
+
+        if ($wanted === '' || mb_strlen($title) > 200 || ! preg_match('/^Q\d{1,12}$/', $class)) {
+            return null;
+        }
+
+        $found = $this->get('https://www.wikidata.org/w/api.php', [
+            'action' => 'query', 'list' => 'search',
+            'srsearch' => '"'.str_replace(['"', '\\'], '', $title).'" haswbstatement:P31='.$class,
+            'srlimit' => 3, 'srprop' => '', 'format' => 'json', 'formatversion' => 2,
+        ]);
+        $ids = array_values(array_filter(array_column($found['query']['search'] ?? [], 'title'), fn ($id) => is_string($id) && preg_match('/^Q\d{1,12}$/', $id)));
+
+        if (! $ids) {
+            return null;
+        }
+
+        $entities = $this->get('https://www.wikidata.org/w/api.php', [
+            'action' => 'wbgetentities', 'ids' => implode('|', $ids), 'props' => 'labels|claims', 'languages' => 'en|mul',
+            'format' => 'json', 'formatversion' => 2,
+        ]);
+
+        foreach ($ids as $id) {
+            $entity = $entities['entities'][$id] ?? [];
+            $labels = array_map(fn ($l) => self::plain((string) ($l['value'] ?? '')), (array) ($entity['labels'] ?? []));
+            $published = $entity['claims']['P577'][0]['mainsnak']['datavalue']['value']['time'] ?? null;
+            $itemYear = is_string($published) && preg_match('/^\+?(\d{4})-/', $published, $m) ? (int) $m[1] : null;
+
+            if (in_array($wanted, $labels, true) && (! $year || ! $itemYear || abs($year - $itemYear) <= 1)) {
+                return $id;
+            }
+        }
+
+        return null;
+    }
+
+    private static function plain(string $title): string
+    {
+        return (string) preg_replace('/[^\p{L}\p{N}]+/u', '', mb_strtolower($title));
+    }
+
+    /**
      * The lead of the item's article on <wiki>.wikipedia.org, or null when that
      * Wikipedia has no article about it.
      *

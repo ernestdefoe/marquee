@@ -43,7 +43,8 @@ export default class LinkModal extends FormModal {
   }
 
   className() {
-    return 'MarqueeLinkModal Modal--small';
+    // Wide enough for a result's full title, developer and platforms.
+    return 'MarqueeLinkModal';
   }
 
   title() {

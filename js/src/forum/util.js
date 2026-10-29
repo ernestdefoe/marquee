@@ -95,3 +95,26 @@ export const pickFromMedia = (media) => ({
   season: null,
   episode: null,
 });
+
+/**
+ * IGDB's genres and game modes are a short fixed list, translated by key
+ * (forum.genre.<slug>, forum.mode.<slug>). Titles stored before the slugs were
+ * kept get them from the English name; anything unknown stays as it came.
+ */
+export const igdbTerms = (group, names, slugs) =>
+  (names || []).map((name, i) => {
+    const slug =
+      (slugs && slugs[i]) ||
+      String(name)
+        .toLowerCase()
+        .replace(/&/g, 'and')
+        .replace(/'/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+    const key = `ernestdefoe-marquee.forum.${group}.${slug}`;
+    return app.translator.translations[key] ? extractText(app.translator.trans(key)) : name;
+  });
+
+/** Admin display switches (on unless turned off). */
+export const showScores = () => app.forum.attribute('marqueeScores') !== false;
+export const showSourceLink = () => app.forum.attribute('marqueeSourceLink') !== false;

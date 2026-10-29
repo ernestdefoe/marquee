@@ -1,4 +1,3 @@
-import app from 'flarum/forum/app';
 import Component from 'flarum/common/Component';
 import ItemList from 'flarum/common/utils/ItemList';
 import listItems from 'flarum/common/helpers/listItems';
@@ -7,12 +6,14 @@ import abbreviateNumber from 'flarum/common/utils/abbreviateNumber';
 import tagsLabel from 'ext:flarum/tags/common/helpers/tagsLabel';
 import SeasonBrowser from './SeasonBrowser';
 import EpisodeModal from './EpisodeModal';
-import { t, text, img, date, runtime, sourceName, pickFromMedia, titleFor } from '../util';
+import app from 'flarum/forum/app';
+import { t, text, img, date, runtime, sourceName, pickFromMedia, titleFor, igdbTerms, showScores, showSourceLink } from '../util';
 import { loadSeason, primeSeason } from '../api';
 import { startDiscussion } from '../startDiscussion';
 
+// The admin can hide every score and rating (on by default).
 const ring = (value, label, kind) =>
-  value ? (
+  value && showScores() ? (
     <div className={classList('MarqueeHero-score', kind && `MarqueeHero-score--${kind}`)}>
       <span className="MarqueeHero-ring" style={{ '--v': value }}>
         <b>{value}</b>
@@ -180,7 +181,7 @@ function subject(media, d, season, episode, seasonData) {
       ],
       score: [
         d.subtitle && <p className="MarqueeHero-tagline">{d.subtitle}</p>,
-        d.rating ? (
+        d.rating && showScores() ? (
           <p className="MarqueeHero-fans">
             <i className="fas fa-star" aria-hidden="true" /> {t('hero.book_rating', { rating: d.rating, count: abbreviateNumber(d.ratingCount) })}
           </p>
@@ -205,6 +206,7 @@ function subject(media, d, season, episode, seasonData) {
         [t('credits.isbn'), d.isbn],
       ]),
       overview: d.overview,
+      untranslated: d.untranslated,
       people: [t('hero.authors'), d.people.some((p) => p.photo) ? d.people : []],
       url: d.url,
     };
@@ -214,7 +216,7 @@ function subject(media, d, season, episode, seasonData) {
     return {
       poster: d.poster,
       backdrop: img(d.backdrop, 'w1280'),
-      meta: [date(d.date), d.modes.join(', '), d.genres.join(', ')],
+      meta: [date(d.date), igdbTerms('mode', d.modes, d.modeSlugs).join(', '), igdbTerms('genre', d.genres, d.genreSlugs).join(', ')],
       score: [
         ring(d.critic, t('hero.critic_rating'), 'critic'),
         ring(d.users, t('hero.member_rating'), 'users'),
@@ -232,6 +234,7 @@ function subject(media, d, season, episode, seasonData) {
         [t('credits.series'), d.crew.series],
       ]),
       overview: d.overview,
+      untranslated: d.untranslated,
       extra: [timeToBeat(d.timeToBeat), screenshots(d.screenshots)],
       url: d.url,
     };
@@ -290,13 +293,16 @@ export default class MediaHero extends Component {
     const source = sourceName(media.kind());
     const items = new ItemList();
 
-    items.add(
-      'source',
-      <a className="Button Button--primary" href={s.url} target="_blank" rel="noopener noreferrer">
-        {s.linkLabel || t('hero.view_on', { source })}
-      </a>,
-      100
-    );
+    // The admin can hide the button; the attribution below always stays (TMDB and IGDB ask for it).
+    if (showSourceLink()) {
+      items.add(
+        'source',
+        <a className="Button Button--primary" href={s.url} target="_blank" rel="noopener noreferrer">
+          {s.linkLabel || t('hero.view_on', { source })}
+        </a>,
+        100
+      );
+    }
 
     if (ep) {
       items.add(
@@ -347,6 +353,37 @@ export default class MediaHero extends Component {
     return items;
   }
 
+  /**
+   * No description in the data language (no Wikipedia article, no DeepL): say
+   * so, and keep the source's English behind a toggle, as Curio does.
+   */
+  untranslated(s) {
+    const names = new Intl.DisplayNames([app.translator.getLocale() || 'en'], { type: 'language' });
+    const name = (code) => {
+      try {
+        return names.of(code);
+      } catch (e) {
+        return code;
+      }
+    };
+    const other = name(s.untranslated.have);
+
+    return (
+      <div className="MarqueeHero-overview MarqueeHero-overview--missing">
+        <p>{t('hero.no_description', { language: name(s.untranslated.want.split('-')[0]) })}</p>
+        <button
+          type="button"
+          className="Button Button--link"
+          aria-expanded={String(!!this.showOther)}
+          onclick={() => (this.showOther = !this.showOther)}
+        >
+          {t(this.showOther ? 'hero.hide_other' : 'hero.show_other', { language: other })}
+        </button>
+        {this.showOther ? <p lang={s.untranslated.have}>{s.overview}</p> : null}
+      </div>
+    );
+  }
+
   episode() {
     const { episode } = this.attrs.link;
     return (episode && this.seasonData?.episodes.find((e) => e.n === episode)) || null;
@@ -377,6 +414,7 @@ export default class MediaHero extends Component {
         className={classList('Hero DiscussionHero MarqueeHero', `MarqueeHero--${media.kind()}`, {
           'MarqueeHero--episode': ep,
           'MarqueeHero--renamed': renamed,
+          'MarqueeHero--backdrop': !!s.backdrop,
         })}
       >
         {s.backdrop ? <div className="MarqueeHero-backdrop" style={{ backgroundImage: `url(${s.backdrop})` }} /> : null}
@@ -421,7 +459,7 @@ export default class MediaHero extends Component {
               </dl>
             ) : null}
 
-            {s.overview ? <p className="MarqueeHero-overview">{s.overview}</p> : null}
+            {s.overview && s.untranslated ? this.untranslated(s) : s.overview ? <p className="MarqueeHero-overview">{s.overview}</p> : null}
 
             {s.extra || null}
 

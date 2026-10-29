@@ -159,13 +159,19 @@ app.initializers.add('ernestdefoe-marquee', () => {
   });
 
   extend(DiscussionListItem.prototype, 'infoItems', function (items) {
+    // The admin picks what the list says: "Game · 2026", "2026" or nothing. A
+    // season or episode code shows under the first two, as it says which part is meant.
+    const show = app.forum.attribute('marqueeListMeta') || 'kind_year';
     const link = linkFor(this.attrs.discussion);
-    if (!link) return;
+    if (!link || show === 'none') return;
 
+    const year = link.media.year();
     let label;
     if (link.episode) label = t('list.episode', { season: pad(link.season), episode: pad(link.episode) });
     else if (link.season) label = t('list.season', { number: link.season });
-    else label = [t(`kind.${link.media.kind()}`), link.media.year() ? ` · ${link.media.year()}` : ''];
+    else if (show === 'year') label = year;
+    else label = [t(`kind.${link.media.kind()}`), year ? ` · ${year}` : ''];
+    if (!label) return;
 
     items.add('marquee', <span className="Marquee-listMeta">{label}</span>, 5);
   });

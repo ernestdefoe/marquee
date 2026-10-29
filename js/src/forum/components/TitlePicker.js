@@ -70,7 +70,13 @@ export default class TitlePicker extends Component {
     const composer = this.element.closest('.Composer');
     if (list && composer) {
       const room = composer.getBoundingClientRect().bottom - list.getBoundingClientRect().top - 8;
-      list.style.maxHeight = `${Math.max(160, Math.min(360, room))}px`;
+      list.style.maxHeight = `${Math.max(160, Math.min(420, room))}px`;
+    }
+
+    // Arrow keys keep the highlighted result in view inside the list.
+    if (list && this.scrollActive) {
+      this.scrollActive = false;
+      list.querySelector('.Marquee-result.active')?.scrollIntoView({ block: 'nearest' });
     }
   }
 
@@ -96,10 +102,21 @@ export default class TitlePicker extends Component {
           onmouseenter={() => (this.active = i)}
         >
           {r.poster ? <img src={img(r.poster, 'w92')} alt="" loading="lazy" decoding="async" /> : <span className="Marquee-noPoster" />}
-          <span>
-            <b>{r.title}</b>
-            <small>{[r.year, r.subtitle, r.tracks ? text('meta.tracks_count', { count: r.tracks }) : null].filter(Boolean).join(' · ')}</small>
-          </span>
+          <div className="Marquee-resultText">
+            <b>
+              {r.title}
+              {r.year ? <span className="Marquee-resultYear"> ({r.year})</span> : null}
+            </b>
+            {this.byline(kind, r) ? <small>{this.byline(kind, r)}</small> : null}
+            {r.platforms && r.platforms.length ? (
+              <ul className="Marquee-resultChips">
+                {r.platforms.slice(0, 6).map((p) => (
+                  <li>{p}</li>
+                ))}
+                {r.platforms.length > 6 ? <li>+{r.platforms.length - 6}</li> : null}
+              </ul>
+            ) : null}
+          </div>
         </li>
       ));
     }
@@ -116,6 +133,12 @@ export default class TitlePicker extends Component {
         {rows}
       </ul>
     );
+  }
+
+  /** The line under a result: a game's developer; an album's artist and tracks; a book's authors; a film's genres. */
+  byline(kind, r) {
+    if (kind === 'game') return r.developer || (r.platforms ? null : r.subtitle);
+    return [r.subtitle, r.tracks ? text('meta.tracks_count', { count: r.tracks }) : null].filter(Boolean).join(' · ');
   }
 
   kind() {
@@ -203,6 +226,7 @@ export default class TitlePicker extends Component {
     else if (this.open && e.key === 'Escape') this.open = false;
     else return this.attrs.onkeydown && this.attrs.onkeydown(e);
 
+    this.scrollActive = true;
     e.preventDefault();
     e.stopPropagation();
   }

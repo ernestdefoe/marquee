@@ -412,8 +412,9 @@ class MarqueeTest extends TestCase
 
         $this->assertSame(1, $deepl->calls);
         $this->assertSame('[FR] Defy the god of the dead.', $fr['overview']);
-        $this->assertSame(['[FR] Role-playing (RPG)', ''], $fr['genres']);
-        $this->assertSame(['[FR] Single player'], $fr['modes']);
+        // Genres and modes are IGDB's fixed list, translated by the forum's language files instead.
+        $this->assertSame(['Role-playing (RPG)', ''], $fr['genres']);
+        $this->assertSame(['Single player'], $fr['modes']);
         $this->assertSame(['PC'], $fr['platforms']);
         $this->assertSame('Hades', $fr['title']);
         $this->assertSame('deepl', $fr['translation']['by']);
@@ -458,5 +459,33 @@ class MarqueeTest extends TestCase
         $this->assertNull($game['url']);
         $this->assertNull($game['poster']);
         $this->assertNull($game['trailer']);
+    }
+
+    #[Test]
+    public function genres_and_modes_keep_igdbs_slugs_for_the_language_files(): void
+    {
+        $game = IgdbGames::normalize([
+            'name' => 'Hades',
+            'genres' => [['name' => 'Role-playing (RPG)', 'slug' => 'role-playing-rpg'], ['name' => 'Indie', 'slug' => '"><x']],
+            'game_modes' => [['name' => 'Single player', 'slug' => 'single-player']],
+        ], null);
+
+        $this->assertSame(['Role-playing (RPG)', 'Indie'], $game['genres']);
+        $this->assertSame(['role-playing-rpg', null], $game['genreSlugs']);
+        $this->assertSame(['single-player'], $game['modeSlugs']);
+    }
+
+    #[Test]
+    public function the_display_settings_reach_the_forum_as_scalars_only(): void
+    {
+        $this->setting(Settings::SHOW_SCORES, '0');
+        $this->setting(Settings::LIST_META, '<script>');
+
+        $forum = json_decode((string) $this->send($this->request('GET', '/api'))->getBody(), true)['data']['attributes'];
+
+        $this->assertFalse($forum['marqueeScores']);
+        $this->assertTrue($forum['marqueeSourceLink']);
+        $this->assertSame('kind_year', $forum['marqueeListMeta']);
+        $this->assertArrayNotHasKey('ernestdefoe-marquee.deepl_key', $forum);
     }
 }

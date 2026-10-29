@@ -1,6 +1,7 @@
 <?php
 
 use Ernestdefoe\Marquee\Api;
+use Ernestdefoe\Marquee\Console;
 use Ernestdefoe\Marquee\Formatter;
 use Ernestdefoe\Marquee\Media;
 use Ernestdefoe\Marquee\Settings;
@@ -9,6 +10,7 @@ use Flarum\Api\Resource\DiscussionResource;
 use Flarum\Api\Resource\ForumResource;
 use Flarum\Discussion\Discussion;
 use Flarum\Extend;
+use Illuminate\Console\Scheduling\Event;
 
 return [
     (new Extend\Frontend('forum'))
@@ -47,8 +49,17 @@ return [
     (new Extend\ApiResource(ForumResource::class))
         ->fields(Api\ForumFields::class),
 
+    (new Extend\Console())
+        ->command(Console\DescribeCommand::class)
+        ->schedule(Console\DescribeCommand::class, function (Event $event): void {
+            $event->daily()->withoutOverlapping();
+        }),
+
     (new Extend\Settings())
         ->default(Settings::LANGUAGE, '')
         ->default(Settings::LIST_POSTERS, true)
+        ->default(Settings::SHOW_SCORES, true)
+        ->default(Settings::SHOW_SOURCE_LINK, true)
+        ->default(Settings::LIST_META, 'kind_year')
         ->default(Settings::TAGS, '{}'),
 ];

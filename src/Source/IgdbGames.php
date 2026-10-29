@@ -33,7 +33,7 @@ class IgdbGames implements Source
 
     private const DETAIL_FIELDS = 'name,slug,url,summary,first_release_date,aggregated_rating,aggregated_rating_count,'
         .'rating,rating_count,cover.image_id,artworks.image_id,artworks.width,artworks.height,artworks.alpha_channel,screenshots.image_id,platforms.name,'
-        .'platforms.abbreviation,genres.name,game_modes.name,involved_companies.company.name,'
+        .'platforms.abbreviation,genres.name,genres.slug,game_modes.name,game_modes.slug,involved_companies.company.name,'
         .'involved_companies.developer,involved_companies.publisher,videos.video_id,videos.name,'
         .'franchises.name,collections.name,game_localizations.name,game_localizations.region.identifier';
 
@@ -58,7 +58,8 @@ class IgdbGames implements Source
         // how many ratings each has; an exact title match with ratings leads.
         $results = $this->igdb->query('games', implode(' ', [
             'search '.IgdbClient::quote($query).';',
-            'fields name,game_type,version_parent,first_release_date,total_rating_count,cover.image_id,platforms.abbreviation,platforms.name,genres.name;',
+            'fields name,game_type,version_parent,first_release_date,total_rating_count,cover.image_id,platforms.abbreviation,platforms.name,genres.name,'
+                .'involved_companies.company.name,involved_companies.developer;',
             self::WHERE,
             'limit 50;',
         ]));
@@ -68,6 +69,9 @@ class IgdbGames implements Source
 
         return array_map(fn ($g) => [
             'id' => (string) $g['id'],
+            // The picker's second line and chips. `subtitle` keeps its shape: Curio reads it.
+            'developer' => implode(', ', array_slice(self::developers($g['involved_companies'] ?? []), 0, 2)) ?: null,
+            'platforms' => self::platforms($g['platforms'] ?? []),
             'title' => $g['name'],
             'year' => self::year($g['first_release_date'] ?? null),
             'poster' => self::image($g['cover']['image_id'] ?? null),
@@ -154,6 +158,7 @@ class IgdbGames implements Source
         }
 
         $companies = $g['involved_companies'] ?? [];
+        $slugs = fn (array $list) => array_map(fn ($x) => is_string($x['slug'] ?? null) && preg_match('/^[a-z0-9-]{1,60}$/', $x['slug']) ? $x['slug'] : null, $list);
         $role = fn (string $flag) => array_values(array_unique(array_filter(array_map(
             fn ($c) => ! empty($c[$flag]) ? ($c['company']['name'] ?? null) : null,
             $companies
@@ -186,6 +191,9 @@ class IgdbGames implements Source
             'date' => isset($g['first_release_date']) ? gmdate('Y-m-d', (int) $g['first_release_date']) : null,
             'genres' => array_column($g['genres'] ?? [], 'name'),
             'modes' => array_column($g['game_modes'] ?? [], 'name'),
+            // IGDB's fixed genre and mode lists, translated by key on the forum (forum.genre.*, forum.mode.*).
+            'genreSlugs' => $slugs(array_values(array_filter($g['genres'] ?? [], fn ($x) => isset($x['name'])))),
+            'modeSlugs' => $slugs(array_values(array_filter($g['game_modes'] ?? [], fn ($x) => isset($x['name'])))),
             'platforms' => self::platforms($g['platforms'] ?? [], false),
             'critic' => isset($g['aggregated_rating']) ? (int) round($g['aggregated_rating']) : null,
             'criticCount' => $g['aggregated_rating_count'] ?? null,
@@ -213,6 +221,15 @@ class IgdbGames implements Source
             // Wikidata knows games by this (P5794); it leads to Wikipedia's description in other languages.
             'slug' => preg_match('/^[a-z0-9-]{1,100}$/', $g['slug'] ?? '') ? $g['slug'] : null,
         ];
+    }
+
+    /** @return list<string> */
+    private static function developers(array $companies): array
+    {
+        return array_values(array_unique(array_filter(array_map(
+            fn ($c) => ! empty($c['developer']) && is_string($c['company']['name'] ?? null) ? $c['company']['name'] : null,
+            $companies
+        ))));
     }
 
     /** "PC, PS5, Switch +4" */

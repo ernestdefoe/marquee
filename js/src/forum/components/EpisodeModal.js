@@ -1,7 +1,7 @@
 import app from 'flarum/forum/app';
 import Modal from 'flarum/common/components/Modal';
 import Button from 'flarum/common/components/Button';
-import { t, text, img, pad, date, runtime } from '../util';
+import { t, text, img, pad, date, runtime, showScores } from '../util';
 import { startDiscussion } from '../startDiscussion';
 
 /**
@@ -38,7 +38,7 @@ export default class EpisodeModal extends Modal {
           {[date(e.date), runtime(e.runtime)].filter(Boolean).map((part) => (
             <li>{part}</li>
           ))}
-          {e.score ? (
+          {e.score && showScores() ? (
             <li>
               <i className="fas fa-star" aria-hidden="true" /> {t('modal.score', { score: e.score })}
             </li>

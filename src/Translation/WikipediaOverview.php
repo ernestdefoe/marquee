@@ -9,17 +9,39 @@ use RuntimeException;
 
 /**
  * IGDB describes games in English only. Wikipedia often has the game in the
- * data language, and Wikidata links the two by IGDB slug (P5794), so on a
- * non-English forum the article's lead becomes the game's description, credited
- * to Wikipedia (CC BY-SA). DeepL, when set up, then translates what is left.
+ * data language, and Wikidata links the two by IGDB slug (P5794), or failing
+ * that by title and year, so on a non-English forum the article's lead becomes
+ * the game's description, credited to Wikipedia (CC BY-SA). DeepL, when set
+ * up, then translates what is left.
  *
- * Runs only when a title is fetched or refreshed (weekly), and never on an
- * English forum. Any failure leaves the data as it came.
+ * Runs when a title is fetched or refreshed, daily while the article is
+ * missing, and never on an English forum. Any failure leaves the data as it came.
  */
 class WikipediaOverview
 {
+    /** Wikidata's class for video games, for finding one by title. */
+    private const VIDEO_GAME = 'Q7889';
+
     public function __construct(private Bridge $bridge, private DataLanguage $language, private LoggerInterface $log)
     {
+    }
+
+    public function applies(string $kind): bool
+    {
+        $wiki = Bridge::wiki($this->language->get());
+
+        return $kind === 'game' && $wiki !== null && $wiki !== 'en';
+    }
+
+    /**
+     * Whether a game still has no description in the data language: no article
+     * found, and no DeepL translation in its place.
+     *
+     * @param array<string, mixed> $data
+     */
+    public function missing(string $kind, array $data): bool
+    {
+        return $this->applies($kind) && ! isset($data['wikipedia']) && ! isset($data['translation']);
     }
 
     /**
@@ -29,20 +51,21 @@ class WikipediaOverview
      */
     public function apply(string $kind, array $data, ?array $previous): array
     {
-        $language = $this->language->get();
-        $wiki = Bridge::wiki($language);
-        $slug = $data['slug'] ?? null;
-
-        if ($kind !== 'game' || $wiki === null || $wiki === 'en' || ! is_string($slug)) {
+        if (! $this->applies($kind) || ! is_string($data['title'] ?? null)) {
             return $data;
         }
 
+        $language = $this->language->get();
+        $wiki = (string) Bridge::wiki($language);
+        $slug = $data['slug'] ?? null;
         $before = $previous['wikipedia'] ?? null;
-        $sameGame = ($previous['slug'] ?? null) === $slug;
+        $sameGame = $previous !== null && ($previous['slug'] ?? null) === $slug;
 
         try {
-            // The slug's item does not move; only the first fetch searches for it.
-            $item = $sameGame && isset($before['item']) ? $before['item'] : $this->bridge->item('P5794', $slug);
+            // The game's item does not move; once found it is kept and not searched for again.
+            $item = $sameGame ? ($previous['wikidata'] ?? $before['item'] ?? null) : null;
+            $item ??= (is_string($slug) ? $this->bridge->item('P5794', $slug) : null)
+                ?? $this->bridge->find($data['title'], is_int($data['year'] ?? null) ? $data['year'] : null, self::VIDEO_GAME);
             $summary = $item ? $this->bridge->summary($item, $wiki, $language) : null;
         } catch (RuntimeException $e) {
             $this->log->info('[marquee] Wikipedia description skipped: '.$e->getMessage());
@@ -54,6 +77,10 @@ class WikipediaOverview
             }
 
             return $data;
+        }
+
+        if ($item) {
+            $data['wikidata'] = $item;
         }
 
         if ($summary === null) {

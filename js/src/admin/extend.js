@@ -90,6 +90,35 @@ export default [
       }),
       85
     )
+    .setting(
+      () => ({
+        setting: 'ernestdefoe-marquee.list_meta',
+        type: 'select',
+        label: t('list_meta_label'),
+        help: t('list_meta_help'),
+        options: { kind_year: t('list_meta_kind_year'), year: t('list_meta_year'), none: t('list_meta_none') },
+        default: 'kind_year',
+      }),
+      84
+    )
+    .setting(
+      () => ({
+        setting: 'ernestdefoe-marquee.show_scores',
+        type: 'switch',
+        label: t('show_scores_label'),
+        help: t('show_scores_help'),
+      }),
+      83
+    )
+    .setting(
+      () => ({
+        setting: 'ernestdefoe-marquee.show_source_link',
+        type: 'switch',
+        label: t('show_source_link_label'),
+        help: t('show_source_link_help'),
+      }),
+      82
+    )
     .customSetting(function () {
       return <TagSources stream={this.setting('ernestdefoe-marquee.tags', '{}')} />;
     }, 80),

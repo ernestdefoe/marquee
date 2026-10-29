@@ -22,9 +22,13 @@ use RuntimeException;
  */
 class Translator
 {
-    /** The fields of each kind that are English text. */
+    /**
+     * The fields of each kind that are English text. A game's genres and modes
+     * are not here: IGDB has a short fixed list of them, which the forum's
+     * language files translate (forum.genre.*, forum.mode.*).
+     */
     private const FIELDS = [
-        'game' => ['overview', 'genres', 'modes'],
+        'game' => ['overview'],
         'book' => ['overview', 'subtitle', 'subjects'],
     ];
 
@@ -34,6 +38,13 @@ class Translator
         private SettingsRepositoryInterface $settings,
         private LoggerInterface $log
     ) {
+    }
+
+    public function applies(string $kind): bool
+    {
+        return isset(self::FIELDS[$kind])
+            && trim((string) $this->settings->get(Settings::DEEPL_KEY)) !== ''
+            && DeepL::target($this->language->get()) !== null;
     }
 
     /**

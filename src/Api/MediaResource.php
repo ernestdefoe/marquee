@@ -3,6 +3,8 @@
 namespace Ernestdefoe\Marquee\Api;
 
 use Ernestdefoe\Marquee\Media;
+use Ernestdefoe\Marquee\Source\DataLanguage;
+use Ernestdefoe\Marquee\Wikimedia\Bridge;
 use Flarum\Api\Context;
 use Flarum\Api\Resource\AbstractDatabaseResource;
 use Flarum\Api\Resource\DiscussionResource;
@@ -29,6 +31,27 @@ class MediaResource extends AbstractDatabaseResource
         return [];
     }
 
+    /**
+     * A game or book whose description is still the source's English on a
+     * non-English forum (no Wikipedia article, no DeepL): the card says so and
+     * keeps the English behind a toggle.
+     *
+     * @return array{untranslated?: array{have: string, want: string}}
+     */
+    private static function untranslated(Media $m): array
+    {
+        $d = $m->data;
+        $language = resolve(DataLanguage::class)->get();
+        $wiki = Bridge::wiki($language);
+
+        if (! in_array($m->kind, ['game', 'book'], true) || $wiki === null || $wiki === 'en'
+            || ! is_string($d['overview'] ?? null) || trim($d['overview']) === '' || isset($d['wikipedia']) || isset($d['translation'])) {
+            return [];
+        }
+
+        return ['untranslated' => ['have' => 'en', 'want' => $language]];
+    }
+
     public function fields(): array
     {
         return [
@@ -41,7 +64,7 @@ class MediaResource extends AbstractDatabaseResource
             Schema\Str::make('artist')->nullable()->get(fn (Media $m) => $m->data['artist'] ?? null),
             Schema\Arr::make('details')
                 ->visible(fn (Media $m, Context $context) => $context->showing(DiscussionResource::class) || $context->updating(DiscussionResource::class))
-                ->get(fn (Media $m) => $m->data),
+                ->get(fn (Media $m) => $m->data + self::untranslated($m)),
         ];
     }
 }
