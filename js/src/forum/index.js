@@ -13,7 +13,7 @@ import MediaHero from './components/MediaHero';
 import TitlePicker from './components/TitlePicker';
 import ScopePicker from './components/ScopePicker';
 import { t, img, pad, sourceName, kindForTags, linkFor, titleFor } from './util';
-import { applyPrefill } from './startDiscussion';
+import { applyPrefill } from './utils/startDiscussion';
 import CommentPost from 'flarum/forum/components/CommentPost';
 import { decorate } from './refs';
 import { attachSuggest } from './suggest';

@@ -9,7 +9,7 @@ import EpisodeModal from './EpisodeModal';
 import app from 'flarum/forum/app';
 import { t, text, img, date, runtime, sourceName, pickFromMedia, titleFor, igdbTerms, showScores, showSourceLink } from '../util';
 import { loadSeason, primeSeason } from '../api';
-import { startDiscussion } from '../startDiscussion';
+import { startDiscussion } from '../utils/startDiscussion';
 
 // The admin can hide every score and rating (on by default).
 const ring = (value, label, kind) =>

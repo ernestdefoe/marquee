@@ -2,7 +2,7 @@ import app from 'flarum/forum/app';
 import Modal from 'flarum/common/components/Modal';
 import Button from 'flarum/common/components/Button';
 import { t, text, img, pad, date, runtime, showScores } from '../util';
-import { startDiscussion } from '../startDiscussion';
+import { startDiscussion } from '../utils/startDiscussion';
 
 /**
  * One episode: still, air date, runtime, score, crew, guest stars and synopsis,
