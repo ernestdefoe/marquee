@@ -114,9 +114,10 @@ app.initializers.add('ernestdefoe-marquee', () => {
     params.inputListeners.push(() => this.marqueeSuggest && this.marqueeSuggest());
   });
 
-  // Change or remove the link on a posted discussion: whoever may rename it.
+  // Change or remove the link on a posted discussion: whoever may rename it (an
+  // author, only with "Change the linked title of their own discussions").
   extend(DiscussionControls, 'moderationControls', function (items, discussion) {
-    if (!discussion.canRename() || !(kindForTags(discussion.tags()) || linkFor(discussion))) return;
+    if (!discussion.attribute('canMarqueeLink') || !(kindForTags(discussion.tags()) || linkFor(discussion))) return;
 
     items.add(
       'marquee',

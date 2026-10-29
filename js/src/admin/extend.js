@@ -121,5 +121,14 @@ export default [
     )
     .customSetting(function () {
       return <TagSources stream={this.setting('ernestdefoe-marquee.tags', '{}')} />;
-    }, 80),
+    }, 80)
+    .permission(
+      () => ({
+        icon: 'fas fa-link',
+        label: t('permissions.link_own'),
+        permission: 'ernestdefoe-marquee.linkOwn',
+      }),
+      'reply',
+      90
+    ),
 ];

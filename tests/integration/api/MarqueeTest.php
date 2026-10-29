@@ -165,6 +165,45 @@ class MarqueeTest extends TestCase
         $this->assertSame(1, Discussion::find(1)->marquee_media_id);
     }
 
+    private function ownDiscussion(): void
+    {
+        $this->prepareDatabase([Discussion::class => [
+            ['id' => 3, 'title' => 'Mine', 'user_id' => 2, 'created_at' => Carbon::now()->toDateTimeString(), 'comment_count' => 1, 'marquee_media_id' => 1],
+        ]]);
+    }
+
+    private function unlinkOwn()
+    {
+        return $this->send($this->request('PATCH', '/api/discussions/3', [
+            'authenticatedAs' => 2,
+            'json' => ['data' => ['type' => 'discussions', 'id' => '3', 'attributes' => ['marquee' => null]]],
+        ]));
+    }
+
+    #[Test]
+    public function members_may_change_the_link_on_their_own_discussion_by_default(): void
+    {
+        // Members have "linkOwn" from the migration: an author who may rename may relink, as before.
+        $this->ownDiscussion();
+
+        $this->assertSame(200, $this->unlinkOwn()->getStatusCode());
+        $this->assertNull(Discussion::find(3)->marquee_media_id);
+    }
+
+    #[Test]
+    public function without_link_own_renaming_no_longer_lets_an_author_change_the_link(): void
+    {
+        // Taken from members (Wlork, Discuss d/40077 #66): only staff who may rename any discussion.
+        $this->ownDiscussion();
+        $this->database()->table('group_permission')->where('permission', 'ernestdefoe-marquee.linkOwn')->delete();
+
+        $page = $this->json($this->send($this->request('GET', '/api/discussions/3', ['authenticatedAs' => 2])));
+        $this->assertFalse($page['data']['attributes']['canMarqueeLink']);
+        $this->assertTrue($page['data']['attributes']['canRename'], 'renaming itself is untouched');
+        $this->assertSame(403, $this->unlinkOwn()->getStatusCode());
+        $this->assertSame(1, Discussion::find(3)->marquee_media_id);
+    }
+
     #[Test]
     public function the_link_can_be_changed_and_the_reply_carries_the_details(): void
     {

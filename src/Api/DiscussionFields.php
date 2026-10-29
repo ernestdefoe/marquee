@@ -12,6 +12,7 @@ use Flarum\Api\Schema;
 use Flarum\Discussion\Discussion;
 use Flarum\Foundation\ValidationException;
 use Flarum\Locale\TranslatorInterface;
+use Flarum\User\User;
 
 class DiscussionFields
 {
@@ -47,12 +48,31 @@ class DiscussionFields
                     ->where('number', $d->marquee_season)
                     ->first()?->data),
 
+            Schema\Boolean::make('canMarqueeLink')
+                ->get(fn (Discussion $d, Context $context) => self::canLink($context->getActor(), $d)),
+
             // Write-only: { kind, id, season?, episode? } or null to unlink.
             Schema\Attribute::make('marquee')
                 ->hidden()
-                ->writable(fn (Discussion $d, Context $context) => $context->creating() || $context->getActor()->can('rename', $d))
+                ->writable(fn (Discussion $d, Context $context) => $context->creating() || self::canLink($context->getActor(), $d))
                 ->set(fn (Discussion $d, mixed $value) => $this->link($d, $value)),
         ];
+    }
+
+    /**
+     * Changing a posted discussion's linked title: whoever may rename it, except
+     * that an author renaming their own discussion also needs "Change the linked
+     * title of their own discussions" (members have it until an admin removes it).
+     */
+    public static function canLink(User $actor, Discussion $discussion): bool
+    {
+        if (! $actor->can('rename', $discussion)) {
+            return false;
+        }
+
+        return (int) $discussion->user_id !== (int) $actor->id
+            || $actor->hasPermission('discussion.rename')
+            || $actor->hasPermission('ernestdefoe-marquee.linkOwn');
     }
 
     private function link(Discussion $discussion, mixed $value): void

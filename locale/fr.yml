@@ -1,5 +1,7 @@
 ernestdefoe-marquee:
   admin:
+    permissions:
+      link_own: Modifier le titre lié de leurs propres discussions
     tmdb_token_label: Jeton d'accès en lecture de l'API TMDB
     tmdb_token_help: "Les films et les séries viennent de The Movie Database. <a>Créez un jeton dans les paramètres API de TMDB</a> et collez ici le long API Read Access Token. Il reste sur le serveur."
     igdb_label: Identifiants d'application Twitch pour IGDB
