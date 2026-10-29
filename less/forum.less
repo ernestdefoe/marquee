@@ -557,6 +557,48 @@
 }
 
 
+// ---- A series: the discussion's other titles --------------------------------
+.MarqueeHero-series {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.MarqueeHero-seriesItem {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+
+  small {
+    font-weight: 500;
+    opacity: 0.7;
+  }
+
+  &:hover,
+  &:focus-visible {
+    background: rgba(255, 255, 255, 0.18);
+  }
+
+  &[aria-pressed='true'] {
+    background: #f2f0eb;
+    border-color: #f2f0eb;
+    color: #0b0d11;
+    cursor: default;
+  }
+}
+
 // ---- TV: parent show, seasons and episodes ---------------------------------
 .MarqueeHero-parent {
   display: inline-flex;
@@ -1042,6 +1084,41 @@
 
   .Marquee-scope .FormControl {
     max-width: 100%;
+  }
+}
+
+.MarqueeLinkModal-relatedList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 4px 4px 6px;
+    border-radius: 6px;
+    background: var(--control-bg);
+  }
+
+  img,
+  .Marquee-noPoster {
+    width: 26px;
+    height: 39px;
+    flex: none;
+    object-fit: cover;
+    border-radius: 3px;
+  }
+
+  span {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 

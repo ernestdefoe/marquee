@@ -26,6 +26,10 @@ export default class LinkModal extends FormModal {
     this.current = current;
     this.nameEpisode();
 
+    // The rest of a series, shown as a row on the card (picked by hand).
+    this.related = (discussion.marqueeRelatedMedia() || []).filter(Boolean).map(pickFromMedia);
+    this.relatedQuery = '';
+
     this.query = '';
     this.rename = true;
     this.saving = false;
@@ -98,6 +102,8 @@ export default class LinkModal extends FormModal {
             </div>
           ) : null}
 
+          {link && this.kind ? this.relatedField() : null}
+
           {link && link.seasons && link.seasons.length ? (
             <div className="Form-group">
               <ScopePicker link={link} onchange={() => m.redraw()} />
@@ -122,6 +128,48 @@ export default class LinkModal extends FormModal {
     );
   }
 
+  /** Related titles: the other games (films, seasons…) of a series, in the card's order. */
+  relatedField() {
+    const link = this.link;
+    const taken = (r) =>
+      (r.kind === link.kind && r.externalId === link.externalId) || this.related.some((o) => o.kind === r.kind && o.externalId === r.externalId);
+
+    return (
+      <div className="Form-group MarqueeLinkModal-related">
+        <label>{t('link.related_label')}</label>
+        <p className="helpText">{t('link.related_help')}</p>
+        {this.related.length ? (
+          <ul className="MarqueeLinkModal-relatedList">
+            {this.related.map((r, i) => (
+              <li>
+                {r.poster ? <img src={img(r.poster, 'w92')} alt="" /> : <span className="Marquee-noPoster" />}
+                <span>{r.year ? `${r.title} (${r.year})` : r.title}</span>
+                <Button
+                  className="Button Button--icon Button--link"
+                  icon="fas fa-times"
+                  aria-label={text('link.related_remove', { title: r.title })}
+                  onclick={() => this.related.splice(i, 1)}
+                />
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <TitlePicker
+          wrapper="div"
+          value={this.relatedQuery}
+          oninput={(value) => (this.relatedQuery = value)}
+          kind={this.kind}
+          linked={false}
+          kindPlaceholder={text('link.related_placeholder')}
+          onpick={(picked) => {
+            if (!taken(picked)) this.related.push(picked);
+            this.relatedQuery = '';
+          }}
+        />
+      </div>
+    );
+  }
+
   onsubmit(e) {
     e.preventDefault();
     const { discussion } = this.attrs;
@@ -129,6 +177,7 @@ export default class LinkModal extends FormModal {
     const attributes = {
       marquee: link ? { kind: link.kind, id: link.externalId, season: link.season || null, episode: link.episode ? link.episode.n : null } : null,
     };
+    if (link) attributes.marqueeRelated = this.related.map((r) => ({ kind: r.kind, id: r.externalId }));
 
     // Only rename once the episode's name is known (see oninit).
     if (link && this.rename && (!link.episode || link.episode.title)) {

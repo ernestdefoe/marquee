@@ -35,7 +35,8 @@ return [
         ->belongsTo('marqueeMedia', Media::class, 'marquee_media_id')
         ->cast('marquee_media_id', 'integer')
         ->cast('marquee_season', 'integer')
-        ->cast('marquee_episode', 'integer'),
+        ->cast('marquee_episode', 'integer')
+        ->cast('marquee_related', 'array'),
 
     new Extend\ApiResource(Api\MediaResource::class),
 
@@ -44,6 +45,11 @@ return [
         ->endpoint(
             [Endpoint\Index::class, Endpoint\Show::class, Endpoint\Create::class, Endpoint\Update::class],
             fn (Endpoint\Index|Endpoint\Show|Endpoint\Create|Endpoint\Update $endpoint) => $endpoint->addDefaultInclude(['marqueeMedia'])
+        )
+        // The related titles' cards: the discussion page only, never the list.
+        ->endpoint(
+            [Endpoint\Show::class, Endpoint\Update::class],
+            fn (Endpoint\Show|Endpoint\Update $endpoint) => $endpoint->addDefaultInclude(['marqueeRelatedMedia'])
         ),
 
     (new Extend\ApiResource(ForumResource::class))

@@ -111,6 +111,7 @@ ernestdefoe-marquee:
       isbn: ISBN
 
     hero:
+      series: Titres de cette discussion
       user_score: Note des utilisateurs TMDB
       season_score: Note de la saison sur TMDB
       episode_score: Note de l'épisode sur TMDB
@@ -157,6 +158,10 @@ ernestdefoe-marquee:
       discuss_episode: Discuter de cet épisode
 
     link:
+      related_label: Titres liés
+      related_help: La suite d’une série, par exemple les autres jeux d’une trilogie. Ils s’affichent en ligne sur la carte, et un clic sur l’un d’eux affiche sa carte à la place.
+      related_placeholder: Ajouter un titre lié…
+      related_remove: "Retirer {title}"
       change: Modifier le titre lié
       add: Lier un titre
       title: Titre lié

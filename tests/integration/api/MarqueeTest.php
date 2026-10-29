@@ -235,6 +235,61 @@ class MarqueeTest extends TestCase
         $this->assertSame(1, Discussion::find(1)->marquee_media_id);
     }
 
+    private function relate(array $related, int $as = 1, int $discussion = 1, array $attributes = [])
+    {
+        return $this->send($this->request('PATCH', '/api/discussions/'.$discussion, [
+            'authenticatedAs' => $as,
+            'json' => ['data' => ['type' => 'discussions', 'id' => (string) $discussion, 'attributes' => $attributes + ['marqueeRelated' => $related]]],
+        ]));
+    }
+
+    #[Test]
+    public function related_titles_are_kept_in_order_and_come_with_the_page_only(): void
+    {
+        // Wlork, Discuss d/40077 #66: one discussion for a series, the other games picked by hand.
+        $response = $this->relate([['kind' => 'tv', 'id' => '1396'], ['kind' => 'movie', 'id' => '603'], ['kind' => 'tv', 'id' => '1396']]);
+        $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+
+        // The linked title itself and repeats are dropped.
+        $this->assertSame([2], Discussion::find(1)->marquee_related);
+
+        $page = $this->json($this->send($this->request('GET', '/api/discussions/1', ['authenticatedAs' => 2])));
+        $this->assertSame([['type' => 'marquee-media', 'id' => '2']], $page['data']['relationships']['marqueeRelatedMedia']['data']);
+        $media = array_values(array_filter($page['included'], fn ($i) => $i['type'] === 'marquee-media' && $i['id'] === '2'));
+        $this->assertSame('Breaking Bad', $media[0]['attributes']['details']['title']);
+
+        $list = $this->json($this->send($this->request('GET', '/api/discussions', ['authenticatedAs' => 2])));
+        $this->assertArrayNotHasKey('marqueeRelatedMedia', $list['data'][0]['relationships'] ?? []);
+
+        $this->assertSame(200, $this->relate([])->getStatusCode());
+        $this->assertNull(Discussion::find(1)->marquee_related);
+    }
+
+    #[Test]
+    public function related_titles_need_the_link_permission_and_a_linked_title(): void
+    {
+        $this->assertSame(403, $this->relate([['kind' => 'tv', 'id' => '1396']], 2)->getStatusCode());
+
+        // Unlinked: nothing to relate to.
+        $this->assertSame(200, $this->send($this->request('PATCH', '/api/discussions/1', [
+            'authenticatedAs' => 1,
+            'json' => ['data' => ['type' => 'discussions', 'id' => '1', 'attributes' => ['marquee' => null]]],
+        ]))->getStatusCode());
+        $this->assertSame(422, $this->relate([['kind' => 'tv', 'id' => '1396']])->getStatusCode());
+    }
+
+    #[Test]
+    public function relinking_to_a_related_title_takes_it_out_of_the_related_ones(): void
+    {
+        $this->relate([['kind' => 'tv', 'id' => '1396']], 1, 1);
+        $this->assertSame([2], Discussion::find(1)->marquee_related);
+
+        $response = $this->relate([['kind' => 'tv', 'id' => '1396'], ['kind' => 'movie', 'id' => '603']], 1, 1, ['marquee' => ['kind' => 'tv', 'id' => '1396', 'season' => null, 'episode' => null]]);
+        $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertSame(2, Discussion::find(1)->marquee_media_id);
+        $this->assertSame([1], Discussion::find(1)->marquee_related);
+    }
+
     #[Test]
     public function the_link_can_be_changed_and_the_reply_carries_the_details(): void
     {

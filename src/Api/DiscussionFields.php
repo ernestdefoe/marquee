@@ -2,6 +2,7 @@
 
 namespace Ernestdefoe\Marquee\Api;
 
+use Ernestdefoe\Marquee\Media;
 use Ernestdefoe\Marquee\MediaRepository;
 use Ernestdefoe\Marquee\Season;
 use Ernestdefoe\Marquee\Source\SourceException;
@@ -48,6 +49,13 @@ class DiscussionFields
                     ->where('number', $d->marquee_season)
                     ->first()?->data),
 
+            // Related titles (the rest of a series), on the discussion page only.
+            Schema\Relationship\ToMany::make('marqueeRelatedMedia')
+                ->type('marquee-media')
+                ->includable()
+                ->withLinkage(fn (Context $context) => $context->showing(DiscussionResource::class) || $context->updating(DiscussionResource::class))
+                ->get(fn (Discussion $d) => self::related($d)),
+
             Schema\Boolean::make('canMarqueeLink')
                 ->get(fn (Discussion $d, Context $context) => self::canLink($context->getActor(), $d)),
 
@@ -56,6 +64,13 @@ class DiscussionFields
                 ->hidden()
                 ->writable(fn (Discussion $d, Context $context) => $context->creating() || self::canLink($context->getActor(), $d))
                 ->set(fn (Discussion $d, mixed $value) => $this->link($d, $value)),
+
+            // Write-only: [{ kind, id }, …] in card order, or [] for none. After
+            // `marquee`, so a change of linked title in the same save comes first.
+            Schema\Attribute::make('marqueeRelated')
+                ->hidden()
+                ->writable(fn (Discussion $d, Context $context) => ! $context->creating() && self::canLink($context->getActor(), $d))
+                ->set(fn (Discussion $d, mixed $value) => $this->relate($d, $value)),
         ];
     }
 
@@ -82,6 +97,7 @@ class DiscussionFields
             $discussion->marquee_media_id = null;
             $discussion->marquee_season = null;
             $discussion->marquee_episode = null;
+            $discussion->marquee_related = null;
 
             return;
         }
@@ -120,9 +136,59 @@ class DiscussionFields
         }
 
         $discussion->marquee_media_id = $media->id;
+        $discussion->marquee_related = array_values(array_diff((array) ($discussion->marquee_related ?? []), [$media->id])) ?: null;
         $discussion->marquee_season = $season;
         $discussion->marquee_episode = $episode;
         $discussion->setRelation('marqueeMedia', $media);
+    }
+
+    /** At most this many related titles: a row of chips, not a catalogue. */
+    private const RELATED = 12;
+
+    /** @return list<Media> the related titles, in the card's order */
+    private static function related(Discussion $discussion): array
+    {
+        $ids = array_values(array_filter(array_map('intval', (array) ($discussion->marquee_related ?? []))));
+        if (! $ids) {
+            return [];
+        }
+
+        $media = Media::query()->whereIn('id', $ids)->get()->keyBy('id');
+
+        return array_values(array_filter(array_map(fn ($id) => $media[$id] ?? null, $ids)));
+    }
+
+    private function relate(Discussion $discussion, mixed $value): void
+    {
+        if ($value === [] || $value === null) {
+            $discussion->marquee_related = null;
+
+            return;
+        }
+
+        if (! $discussion->marquee_media_id || ! is_array($value) || ! array_is_list($value) || count($value) > self::RELATED) {
+            $this->fail('invalid');
+        }
+
+        $ids = [];
+        foreach ($value as $item) {
+            $kind = is_array($item) ? (string) ($item['kind'] ?? '') : '';
+            $id = is_array($item) ? (string) ($item['id'] ?? '') : '';
+
+            if (! $this->sources->get($kind) || ! preg_match('/^[A-Za-z0-9_-]{1,64}$/', $id)) {
+                $this->fail('invalid');
+            }
+
+            try {
+                $ids[] = $this->media->resolve($kind, $id, true)->id;
+            } catch (SourceException) {
+                $this->fail('unavailable');
+            }
+        }
+
+        // Not the linked title itself, and each title once.
+        $ids = array_values(array_unique(array_diff($ids, [(int) $discussion->marquee_media_id])));
+        $discussion->marquee_related = $ids ?: null;
     }
 
     private function fail(string $reason): never

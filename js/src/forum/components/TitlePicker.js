@@ -10,7 +10,7 @@ import { search, lookup } from '../api';
  * discussion title and in the change-link window.
  *
  * Attrs: value, oninput(value), kind, linked (stop searching), onpick(link),
- * onkeydown (keys the list does not use), placeholder, disabled, inputClassName,
+ * onkeydown (keys the list does not use), placeholder, kindPlaceholder (while searching), disabled, inputClassName,
  * focusOnKind (move the cursor here once a kind appears), wrapper (element, default h3),
  * onlookup(link, before) (the stored title came back: year, seasons, artist).
  */
@@ -37,7 +37,7 @@ export default class TitlePicker extends Component {
         <input
           className={classList('FormControl', this.attrs.inputClassName)}
           value={this.attrs.value}
-          placeholder={kind ? text(`picker.placeholder_${kind}`) : this.attrs.placeholder}
+          placeholder={kind ? this.attrs.kindPlaceholder || text(`picker.placeholder_${kind}`) : this.attrs.placeholder}
           disabled={disabled}
           role={kind ? 'combobox' : undefined}
           aria-expanded={kind ? String(open) : undefined}

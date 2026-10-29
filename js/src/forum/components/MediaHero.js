@@ -384,6 +384,27 @@ export default class MediaHero extends Component {
     );
   }
 
+  /** The discussion's titles (linked one first): picking one shows its card here. */
+  series(shown) {
+    return (
+      <ul className="MarqueeHero-series" aria-label={text('hero.series')}>
+        {this.attrs.series.map((work) => (
+          <li>
+            <button
+              type="button"
+              className="MarqueeHero-seriesItem"
+              aria-pressed={String(work === shown)}
+              onclick={() => work !== shown && this.attrs.onswitch(work)}
+            >
+              {work.title()}
+              {work.year() ? <small>{work.year()}</small> : null}
+            </button>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
   episode() {
     const { episode } = this.attrs.link;
     return (episode && this.seasonData?.episodes.find((e) => e.n === episode)) || null;
@@ -445,6 +466,8 @@ export default class MediaHero extends Component {
                 <li>{part}</li>
               ))}
             </ul>
+
+            {this.attrs.series ? this.series(media) : null}
 
             <div className="MarqueeHero-scores">{s.score}</div>
 

@@ -20,6 +20,9 @@ import { attachSuggest } from './suggest';
 // Registered for companion extensions (ext:ernestdefoe/marquee/forum/utils/posterUrl).
 import './utils/posterUrl';
 
+/** Which title of a discussion's series its card shows, by discussion id. */
+const shownTitle = new Map();
+
 app.initializers.add('ernestdefoe-marquee', () => {
   app.store.models['marquee-media'] = Media;
 
@@ -28,6 +31,7 @@ app.initializers.add('ernestdefoe-marquee', () => {
     marqueeSeason: Model.attribute('marqueeSeason'),
     marqueeEpisode: Model.attribute('marqueeEpisode'),
     marqueeSeasonData: Model.attribute('marqueeSeasonData'),
+    marqueeRelatedMedia: Model.hasMany('marqueeRelatedMedia'),
   });
 
   // The composer is a lazy chunk in Flarum 2, so extend it by module path.
@@ -129,13 +133,27 @@ app.initializers.add('ernestdefoe-marquee', () => {
   });
 
   // The full card needs the details the discussion page loads; until they
-  // arrive (or for a discussion with no link) the normal hero shows.
+  // arrive (or for a discussion with no link) the normal hero shows. With
+  // related titles (the rest of a series) the card carries a row of them, and
+  // picking one shows that title's card in place, the linked one until then.
   override(DiscussionHero.prototype, 'view', function (original) {
-    const link = linkFor(this.attrs.discussion);
-    return link && link.media.details() ? (
-      <MediaHero key={[link.media.id(), link.season, link.episode].join(':')} discussion={this.attrs.discussion} link={link} />
-    ) : (
-      original()
+    const discussion = this.attrs.discussion;
+    const main = linkFor(discussion);
+    if (!main || !main.media.details()) return original();
+
+    const related = (discussion.marqueeRelatedMedia() || []).filter((work) => work && work.details());
+    const series = related.length ? [main.media, ...related] : null;
+    const picked = series && series.find((work) => work.id() === shownTitle.get(discussion.id()) && work !== main.media);
+    const link = picked ? { media: picked, season: null, episode: null, seasonData: null } : main;
+
+    return (
+      <MediaHero
+        key={[link.media.id(), link.season, link.episode].join(':')}
+        discussion={discussion}
+        link={link}
+        series={series}
+        onswitch={(media) => shownTitle.set(discussion.id(), media.id())}
+      />
     );
   });
 
