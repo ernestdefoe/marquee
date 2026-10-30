@@ -108,12 +108,13 @@ export default class TitlePicker extends Component {
               {r.year ? <span className="Marquee-resultYear"> ({r.year})</span> : null}
             </b>
             {this.byline(kind, r) ? <small>{this.byline(kind, r)}</small> : null}
-            {r.platforms && r.platforms.length ? (
+            {r.type || (r.platforms && r.platforms.length) ? (
               <ul className="Marquee-resultChips">
-                {r.platforms.slice(0, 6).map((p) => (
+                {r.type ? <li className="Marquee-resultType">{t(`picker.type.${r.type}`)}</li> : null}
+                {(r.platforms || []).slice(0, 6).map((p) => (
                   <li>{p}</li>
                 ))}
-                {r.platforms.length > 6 ? <li>+{r.platforms.length - 6}</li> : null}
+                {r.platforms && r.platforms.length > 6 ? <li>+{r.platforms.length - 6}</li> : null}
               </ul>
             ) : null}
           </div>

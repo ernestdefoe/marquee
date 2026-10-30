@@ -57,6 +57,16 @@ ernestdefoe-marquee:
       results_from: "Résultats de {source}"
       escape_hint: Échap garde un titre simple
       unavailable: "{source} ne répond pas pour le moment. Vous pouvez quand même publier avec un titre simple."
+      type:
+        dlc: DLC
+        expansion: Extension
+        bundle: Bundle
+        standalone: Extension autonome
+        remake: Remake
+        remaster: Remaster
+        expanded: Version étendue
+        port: Portage
+        edition: Édition
 
     composer:
       linked: "Lié à {title} · {source}"

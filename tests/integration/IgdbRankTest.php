@@ -105,6 +105,16 @@ class IgdbRankTest extends TestCase
     }
 
     #[Test]
+    public function results_say_what_kind_of_release_they_are(): void
+    {
+        $this->assertNull(IgdbGames::typeLabel(['game_type' => 0]));
+        $this->assertSame('expansion', IgdbGames::typeLabel(['game_type' => 2, 'version_parent' => 1]));
+        $this->assertSame('bundle', IgdbGames::typeLabel(['game_type' => 3]));
+        $this->assertSame('edition', IgdbGames::typeLabel(['game_type' => 0, 'version_parent' => 119133]));
+        $this->assertNull(IgdbGames::typeLabel(['game_type' => 99]));
+    }
+
+    #[Test]
     public function rows_without_an_id_or_name_are_dropped(): void
     {
         $this->assertSame([], IgdbGames::rank([['name' => 'x'], ['id' => 1], 'junk'], 'x'));

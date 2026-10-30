@@ -34,6 +34,12 @@ class IgdbGames implements Source
 
     private const DLC = 1;
 
+    /**
+     * What a result is when it isn't a main game, shown as a label in the
+     * picker so versions can be told apart (Wlork, Discuss d/40077 #80).
+     */
+    private const TYPE_LABELS = [1 => 'dlc', 2 => 'expansion', 3 => 'bundle', 4 => 'standalone', 8 => 'remake', 9 => 'remaster', 10 => 'expanded', 11 => 'port'];
+
     private const BUNDLE = 3;
 
     private const DETAIL_FIELDS = 'name,slug,url,summary,first_release_date,aggregated_rating,aggregated_rating_count,'
@@ -77,6 +83,7 @@ class IgdbGames implements Source
             // The picker's second line and chips. `subtitle` keeps its shape: Curio reads it.
             'developer' => implode(', ', array_slice(self::developers($g['involved_companies'] ?? []), 0, 2)) ?: null,
             'platforms' => self::platforms($g['platforms'] ?? []),
+            'type' => self::typeLabel($g),
             'title' => $g['name'],
             'year' => self::year($g['first_release_date'] ?? null),
             'poster' => self::image($g['cover']['image_id'] ?? null),
@@ -121,6 +128,16 @@ class IgdbGames implements Source
         usort($games, fn ($a, $b) => $key($a) <=> $key($b));
 
         return $games;
+    }
+
+    /**
+     * dlc, expansion, bundle…; edition for a main game filed under another; null for a game. Public for tests.
+     *
+     * @param array<string, mixed> $game
+     */
+    public static function typeLabel(array $game): ?string
+    {
+        return self::TYPE_LABELS[$game['game_type'] ?? 0] ?? (isset($game['version_parent']) ? 'edition' : null);
     }
 
     /** "Romancing SaGa: Minstrel Song" and "romancing saga minstrel song" are the same title. */
