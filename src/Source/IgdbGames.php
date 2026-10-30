@@ -9,15 +9,18 @@ namespace Ernestdefoe\Marquee\Source;
 class IgdbGames implements Source
 {
     /**
-     * game_type ids worth starting a discussion about: main game, bundle,
-     * standalone expansion, remake, remaster, expanded game, port. Leaves out
-     * DLC, mods, episodes, seasons, packs, updates and forks. Bundles are in
+     * game_type ids worth starting a discussion about: main game, DLC,
+     * expansion, bundle, standalone expansion, remake, remaster, expanded
+     * game, port. Leaves out mods, episodes, seasons, packs, updates and
+     * forks. Expansions and story DLC (Shadow of the Erdtree, The Forsaken
+     * Hollows) are in for their own discussions (Wlork, Discuss d/40077 #77);
+     * rank() keeps unrated DLC (cosmetic packs) under the games. Bundles are in
      * because IGDB files real games as bundles too (UFO 50, Collection of
      * SaGa, Mass Effect Legendary Edition); rank() keeps store bundles under
      * the games. (IGDB kept the old `category` enum values when it moved them
      * to the game_types table.)
      */
-    public const GAME_TYPES = '(0,3,4,8,9,10,11)';
+    public const GAME_TYPES = '(0,1,2,3,4,8,9,10,11)';
 
     /**
      * Editions of another game (version_parent set) are searched too: IGDB
@@ -28,6 +31,8 @@ class IgdbGames implements Source
      * a search isn't led by Deluxe and GOTY editions.
      */
     public const WHERE = 'where game_type = '.self::GAME_TYPES.';';
+
+    private const DLC = 1;
 
     private const BUNDLE = 3;
 
@@ -84,9 +89,9 @@ class IgdbGames implements Source
 
     /**
      * An exact title (punctuation aside) that people have rated, or that is an
-     * edition, first; then the most rated. A bundle nobody has rated ("Halo 3
-     * + Halo Wars", "Dark Souls Trilogy Box") is a shop listing, not a game
-     * people know, so it comes after every game; a rated one (UFO 50, Mass
+     * edition, first; then the most rated. A bundle or DLC nobody has rated
+     * ("Halo 3 + Halo Wars", "Elden Ring: Tarnished Pack") is a shop listing,
+     * not a game people know, so it comes after every game; a rated one (UFO 50, Mass
      * Effect Trilogy) ranks like any game. An edition (Deluxe, Collector's,
      * GOTY) never comes before the game it is an edition of. Public so it is
      * tested without credentials.
@@ -107,7 +112,7 @@ class IgdbGames implements Source
 
             return [
                 ! ($named && ($count > 0 || $parent !== null)),
-                ($g['game_type'] ?? null) === self::BUNDLE && $count === 0,
+                in_array($g['game_type'] ?? null, [self::DLC, self::BUNDLE], true) && $count === 0,
                 // An edition ranks by its own ratings, but below its game.
                 -($edition && array_key_exists($parent, $ratings) ? min($count, $ratings[$parent]) : $count),
                 $edition,

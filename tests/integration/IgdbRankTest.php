@@ -83,6 +83,28 @@ class IgdbRankTest extends TestCase
     }
 
     #[Test]
+    public function expansions_and_dlc_are_searched(): void
+    {
+        // Elden Ring: Shadow of the Erdtree is an expansion (2); story DLC is filed as DLC (1).
+        $this->assertSame('(0,1,2,3,4,8,9,10,11)', IgdbGames::GAME_TYPES);
+    }
+
+    #[Test]
+    public function an_expansion_ranks_by_its_ratings_and_unrated_dlc_comes_last(): void
+    {
+        // What IGDB answers for "Elden Ring", trimmed.
+        $ranked = IgdbGames::rank([
+            ['id' => 20, 'name' => 'Elden Ring: Tarnished Pack', 'game_type' => 1],
+            ['id' => 21, 'name' => 'Elden Ring: Shadow of the Erdtree', 'game_type' => 2, 'total_rating_count' => 133],
+            ['id' => 22, 'name' => 'Elden Ring', 'game_type' => 0, 'total_rating_count' => 2338],
+            ['id' => 23, 'name' => 'Elden Ring Demake', 'game_type' => 0],
+            ['id' => 24, 'name' => 'Elden Ring Nightreign', 'game_type' => 0, 'total_rating_count' => 110],
+        ], 'Elden Ring');
+
+        $this->assertSame([22, 21, 24, 23, 20], array_column($ranked, 'id'));
+    }
+
+    #[Test]
     public function rows_without_an_id_or_name_are_dropped(): void
     {
         $this->assertSame([], IgdbGames::rank([['name' => 'x'], ['id' => 1], 'junk'], 'x'));
