@@ -19,6 +19,8 @@ final class Settings
     /** What the discussion list says under a linked discussion: kind_year | year | none. */
     public const LIST_META = 'ernestdefoe-marquee.list_meta';
     public const LIST_META_CHOICES = ['kind_year', 'year', 'none'];
+    /** "Title (2020)" in discussion titles and on the card; off = the title alone. */
+    public const TITLE_YEAR = 'ernestdefoe-marquee.title_year';
     /** JSON object: tag id => kind (movie | tv | game). */
     public const TAGS = 'ernestdefoe-marquee.tags';
 }

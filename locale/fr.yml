@@ -16,6 +16,8 @@ ernestdefoe-marquee:
     language_placeholder: "La langue du forum"
     list_posters_label: Afficher les affiches dans la liste des discussions
     list_posters_help: "Une petite affiche à côté de chaque discussion liée. Désactivez-la si une autre extension, comme FoF Discussion Thumbnail, affiche déjà des miniatures."
+    title_year_label: Ajouter l'année aux titres
+    title_year_help: "Les titres des discussions et la carte affichent « Final Fantasy VII Remake (2020) ». Désactivez pour « Final Fantasy VII Remake » ; la carte affiche toujours la date. S'applique aux titres liés à partir de maintenant ; les titres de discussions existants gardent leur année jusqu'à ce qu'ils soient renommés."
     list_meta_label: Ce que la liste des discussions affiche sous une discussion liée
     list_meta_help: "Affiché à côté de la ligne de l'auteur. Le code d'une saison ou d'un épisode de série (Saison 2, S03E03) s'affiche avec les deux premiers choix."
     list_meta_kind_year: "Type et année (Jeu · 2026)"

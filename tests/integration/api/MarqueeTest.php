@@ -601,6 +601,16 @@ class MarqueeTest extends TestCase
     }
 
     #[Test]
+    public function the_year_can_be_left_out_of_titles(): void
+    {
+        $this->setting(Settings::TITLE_YEAR, '0');
+
+        $forum = json_decode((string) $this->send($this->request('GET', '/api'))->getBody(), true)['data']['attributes'];
+
+        $this->assertFalse($forum['marqueeTitleYear']);
+    }
+
+    #[Test]
     public function the_display_settings_reach_the_forum_as_scalars_only(): void
     {
         $this->setting(Settings::SHOW_SCORES, '0');
@@ -611,6 +621,7 @@ class MarqueeTest extends TestCase
         $this->assertFalse($forum['marqueeScores']);
         $this->assertTrue($forum['marqueeSourceLink']);
         $this->assertSame('kind_year', $forum['marqueeListMeta']);
+        $this->assertTrue($forum['marqueeTitleYear']);
         $this->assertArrayNotHasKey('ernestdefoe-marquee.deepl_key', $forum);
     }
 }

@@ -22,6 +22,7 @@ class ForumFields
             // Display switches only; nothing secret.
             Schema\Boolean::make('marqueeScores')->get(fn () => (bool) $this->settings->get(Settings::SHOW_SCORES)),
             Schema\Boolean::make('marqueeSourceLink')->get(fn () => (bool) $this->settings->get(Settings::SHOW_SOURCE_LINK)),
+            Schema\Boolean::make('marqueeTitleYear')->get(fn () => (bool) $this->settings->get(Settings::TITLE_YEAR)),
             Schema\Str::make('marqueeListMeta')->get(function () {
                 $value = (string) $this->settings->get(Settings::LIST_META);
 

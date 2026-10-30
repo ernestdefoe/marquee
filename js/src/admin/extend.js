@@ -92,6 +92,15 @@ export default [
     )
     .setting(
       () => ({
+        setting: 'ernestdefoe-marquee.title_year',
+        type: 'switch',
+        label: t('title_year_label'),
+        help: t('title_year_help'),
+      }),
+      86
+    )
+    .setting(
+      () => ({
         setting: 'ernestdefoe-marquee.list_meta',
         type: 'select',
         label: t('list_meta_label'),

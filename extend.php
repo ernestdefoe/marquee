@@ -67,5 +67,6 @@ return [
         ->default(Settings::SHOW_SCORES, true)
         ->default(Settings::SHOW_SOURCE_LINK, true)
         ->default(Settings::LIST_META, 'kind_year')
+        ->default(Settings::TITLE_YEAR, true)
         ->default(Settings::TAGS, '{}'),
 ];

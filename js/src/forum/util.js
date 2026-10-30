@@ -60,10 +60,16 @@ export const tagForKind = (kind) => {
   return id ? app.store.getById('tags', id) : null;
 };
 
-/** The discussion title for a title, one of its seasons, or one episode. */
-export const titleFor = ({ title, year, artist }, season, episode) => {
+/** Whether titles carry the year: "Final Fantasy VII Remake (2020)". */
+export const titleYear = () => app.forum.attribute('marqueeTitleYear') !== false;
+
+/**
+ * The discussion title for a title, one of its seasons, or one episode.
+ * withYear overrides the admin switch.
+ */
+export const titleFor = ({ title, year, artist }, season, episode, withYear = titleYear()) => {
   const name = artist ? `${artist} – ${title}` : title;
-  const base = year ? `${name} (${year})` : name;
+  const base = year && withYear ? `${name} (${year})` : name;
   if (season && episode) return text('title.episode', { base, season: pad(season), episode: pad(episode.n), name: episode.title });
   if (season) return text('title.season', { base, number: season });
   return base;
