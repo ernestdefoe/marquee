@@ -599,6 +599,31 @@
   }
 }
 
+// Phones: one row that scrolls sideways, not a stack of full-width chips.
+@media (max-width: 767px) {
+  .MarqueeHero-series {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin-inline: -16px;
+    padding-inline: 16px;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    > li {
+      flex: none;
+    }
+  }
+
+  .MarqueeHero-seriesItem {
+    padding: 4px 10px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+}
+
 // ---- TV: parent show, seasons and episodes ---------------------------------
 .MarqueeHero-parent {
   display: inline-flex;
@@ -1299,6 +1324,11 @@
   aspect-ratio: 1;
 }
 
+// Game box art is 3:4 (as in Curio); 2:3 cropped its sides.
+.MarqueeHero--game .MarqueeHero-poster {
+  aspect-ratio: ~"3 / 4";
+}
+
 .MarqueeHero-fans {
   margin: 0;
   font-weight: 600;
@@ -1366,6 +1396,10 @@
 
 .Marquee-listPoster--music img {
   height: 32px;
+}
+
+.Marquee-listPoster--game img {
+  height: 43px;
 }
 
 .Marquee-results--music .Marquee-result img,
