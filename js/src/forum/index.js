@@ -152,6 +152,7 @@ app.initializers.add('ernestdefoe-marquee', () => {
         discussion={discussion}
         link={link}
         series={series}
+        main={main}
         onswitch={(media) => shownTitle.set(discussion.id(), media.id())}
       />
     );

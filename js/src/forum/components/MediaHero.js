@@ -429,7 +429,13 @@ export default class MediaHero extends Component {
     const title = discussion.title();
     // Titles made before the year was switched off still carry it: not a rename.
     const workTitle = episode && !ep ? title : titleFor(pick, season, ep);
-    const renamed = workTitle !== title && titleFor(pick, season, ep, true) !== title;
+    // A related title picked from the row is checked against the linked one:
+    // the discussion is named after that, not renamed (Wlork, Discuss d/40077 #85).
+    const main = this.attrs.main;
+    const renamed =
+      main && main.media !== media
+        ? !main.episode && ![false, true].some((year) => titleFor(pickFromMedia(main.media), main.season, null, year) === title)
+        : workTitle !== title && titleFor(pick, season, ep, true) !== title;
 
     return (
       <header
