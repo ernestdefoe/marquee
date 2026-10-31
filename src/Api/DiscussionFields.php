@@ -93,6 +93,8 @@ class DiscussionFields
 
     private function link(Discussion $discussion, mixed $value): void
     {
+        $this->pruneAfterSave($discussion);
+
         if ($value === null) {
             $discussion->marquee_media_id = null;
             $discussion->marquee_season = null;
@@ -160,6 +162,8 @@ class DiscussionFields
 
     private function relate(Discussion $discussion, mixed $value): void
     {
+        $this->pruneAfterSave($discussion);
+
         if ($value === [] || $value === null) {
             $discussion->marquee_related = null;
 
@@ -189,6 +193,17 @@ class DiscussionFields
         // Not the linked title itself, and each title once.
         $ids = array_values(array_unique(array_diff($ids, [(int) $discussion->marquee_media_id])));
         $discussion->marquee_related = $ids ?: null;
+    }
+
+    /** The titles this discussion linked to before the save go once nothing else uses them. */
+    private function pruneAfterSave(Discussion $discussion): void
+    {
+        if (! $discussion->exists) {
+            return;
+        }
+
+        $before = [$discussion->getOriginal('marquee_media_id'), ...(array) ($discussion->getOriginal('marquee_related') ?? [])];
+        $discussion->afterSave(fn () => $this->media->prune($before));
     }
 
     private function fail(string $reason): never

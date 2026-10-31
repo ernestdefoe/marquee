@@ -3,6 +3,9 @@
 namespace Ernestdefoe\Marquee\Tests\integration\api;
 
 use Carbon\Carbon;
+use Ernestdefoe\Marquee\Media;
+use Ernestdefoe\Marquee\MediaRepository;
+use Ernestdefoe\Marquee\Season;
 use Ernestdefoe\Marquee\Settings;
 use Ernestdefoe\Marquee\Source\DataLanguage;
 use Ernestdefoe\Marquee\Source\DeezerAlbums;
@@ -319,6 +322,63 @@ class MarqueeTest extends TestCase
 
         $this->assertSame(200, $response->getStatusCode());
         $this->assertNull(Discussion::find(1)->marquee_media_id);
+    }
+
+    #[Test]
+    public function a_title_nothing_links_to_any_more_is_deleted(): void
+    {
+        // Wlork, Discuss d/40077 #88: removing the link left the title in marquee_media.
+        // Discussion 2 lists The Matrix as related, so the title stays until that goes too.
+        $this->relate([['kind' => 'movie', 'id' => '603']], 1, 2);
+        $this->send($this->request('PATCH', '/api/discussions/1', [
+            'authenticatedAs' => 1,
+            'json' => ['data' => ['type' => 'discussions', 'id' => '1', 'attributes' => ['marquee' => null]]],
+        ]));
+        $this->assertNotNull(Media::find(1));
+
+        $this->assertSame(200, $this->relate([], 1, 2)->getStatusCode());
+        $this->assertNull(Media::find(1));
+    }
+
+    #[Test]
+    public function deleting_a_discussion_deletes_its_titles_and_seasons(): void
+    {
+        $response = $this->send($this->request('DELETE', '/api/discussions/2', ['authenticatedAs' => 1]));
+        $this->assertSame(204, $response->getStatusCode(), (string) $response->getBody());
+
+        $this->assertNull(Media::find(2));
+        $this->assertSame(0, Season::query()->where('media_id', 2)->count());
+        $this->assertNotNull(Media::find(1));
+    }
+
+    #[Test]
+    public function purging_takes_the_settings_with_it(): void
+    {
+        // Wlork, Discuss d/40077 #88.
+        $this->setting('ernestdefoe-marquee.language', 'fr-FR');
+        $this->setting('other-extension.key', 'kept');
+        $db = $this->app()->getContainer()->make('db.connection');
+        $migration = require __DIR__.'/../../../migrations/2026_10_31_000001_delete_marquee_settings_on_purge.php';
+
+        $migration['down']($db->getSchemaBuilder());
+
+        $this->assertSame(0, $db->table('settings')->where('key', 'like', 'ernestdefoe-marquee.%')->count());
+        $this->assertSame('kept', $db->table('settings')->where('key', 'other-extension.key')->value('value'));
+    }
+
+    #[Test]
+    public function the_daily_prune_deletes_look_ups_that_were_never_posted(): void
+    {
+        $repository = $this->app()->getContainer()->make(MediaRepository::class);
+        $title = fn (int $id, Carbon $at) => Media::query()->insert(['id' => $id, 'kind' => 'movie', 'external_id' => (string) (900 + $id), 'title' => "Look-up $id", 'fetched_at' => $at, 'data' => '{}']);
+        $title(3, Carbon::now()->subDays(2));
+        $title(4, Carbon::now());
+        Media::query()->whereKey(1)->update(['fetched_at' => Carbon::now()->subDays(9)]);
+
+        $this->assertSame(1, $repository->prune());
+
+        // The one-day-old look-up may be in a composer still; linked titles stay however old.
+        $this->assertSame([1, 2, 4], Media::query()->orderBy('id')->pluck('id')->all());
     }
 
     #[Test]

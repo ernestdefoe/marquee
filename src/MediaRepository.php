@@ -9,6 +9,7 @@ use Ernestdefoe\Marquee\Source\SourceException;
 use Ernestdefoe\Marquee\Source\Sources;
 use Ernestdefoe\Marquee\Translation\Translator;
 use Ernestdefoe\Marquee\Translation\WikipediaOverview;
+use Flarum\Discussion\Discussion;
 
 /**
  * Titles and seasons are fetched once and kept. A stored copy is refreshed only
@@ -175,5 +176,46 @@ class MediaRepository
         $season->forceFill(['media_id' => $media->id, 'number' => $number, 'data' => $data, 'fetched_at' => Carbon::now()])->save();
 
         return $season;
+    }
+
+    /**
+     * Deletes stored titles (and their seasons) that no discussion links to or
+     * lists as related any more.
+     *
+     * @param list<int|null>|null $ids these titles, after a discussion let go of
+     *                                 them; null = every title stored over a day
+     *                                 ago (look-ups that were never posted)
+     * @return int how many were deleted
+     */
+    public function prune(?array $ids = null): int
+    {
+        $candidates = $ids === null
+            ? Media::query()->where('fetched_at', '<', Carbon::now()->subDay())->pluck('id')->all()
+            : array_values(array_unique(array_filter(array_map('intval', $ids))));
+
+        if (! $candidates) {
+            return 0;
+        }
+
+        $related = [];
+        Discussion::query()->whereNotNull('marquee_related')->toBase()->pluck('marquee_related')
+            ->each(function ($json) use (&$related) {
+                foreach ((array) json_decode((string) $json, true) as $id) {
+                    $related[(int) $id] = true;
+                }
+            });
+
+        $deleted = 0;
+        foreach (array_chunk($candidates, 500) as $chunk) {
+            $linked = Discussion::query()->whereIn('marquee_media_id', $chunk)->distinct()->pluck('marquee_media_id')->map('intval')->all();
+            $unused = array_values(array_filter(array_diff($chunk, $linked), fn ($id) => ! isset($related[$id])));
+
+            if ($unused) {
+                Season::query()->whereIn('media_id', $unused)->delete();
+                $deleted += Media::query()->whereIn('id', $unused)->delete();
+            }
+        }
+
+        return $deleted;
     }
 }

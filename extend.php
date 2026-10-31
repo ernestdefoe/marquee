@@ -4,11 +4,13 @@ use Ernestdefoe\Marquee\Api;
 use Ernestdefoe\Marquee\Console;
 use Ernestdefoe\Marquee\Formatter;
 use Ernestdefoe\Marquee\Media;
+use Ernestdefoe\Marquee\MediaRepository;
 use Ernestdefoe\Marquee\Settings;
 use Flarum\Api\Endpoint;
 use Flarum\Api\Resource\DiscussionResource;
 use Flarum\Api\Resource\ForumResource;
 use Flarum\Discussion\Discussion;
+use Flarum\Discussion\Event\Deleted;
 use Flarum\Extend;
 use Illuminate\Console\Scheduling\Event;
 
@@ -63,6 +65,16 @@ return [
         ->command(Console\GameTypesCommand::class)
         ->schedule(Console\GameTypesCommand::class, function (Event $event): void {
             $event->daily()->withoutOverlapping();
+        })
+        ->command(Console\PruneCommand::class)
+        ->schedule(Console\PruneCommand::class, function (Event $event): void {
+            $event->daily()->withoutOverlapping();
+        }),
+
+    // A deleted discussion's titles go once nothing else links to them.
+    (new Extend\Event())
+        ->listen(Deleted::class, function (Deleted $event): void {
+            resolve(MediaRepository::class)->prune([$event->discussion->marquee_media_id, ...(array) ($event->discussion->marquee_related ?? [])]);
         }),
 
     (new Extend\Settings())
