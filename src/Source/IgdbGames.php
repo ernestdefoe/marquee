@@ -46,7 +46,7 @@ class IgdbGames implements Source
         .'rating,rating_count,cover.image_id,artworks.image_id,artworks.width,artworks.height,artworks.alpha_channel,screenshots.image_id,platforms.name,'
         .'platforms.abbreviation,genres.name,genres.slug,game_modes.name,game_modes.slug,involved_companies.company.name,'
         .'involved_companies.developer,involved_companies.publisher,videos.video_id,videos.name,'
-        .'franchises.name,collections.name,game_localizations.name,game_localizations.region.identifier';
+        .'franchises.name,collections.name,game_localizations.name,game_localizations.region.identifier,game_type,version_parent';
 
     public function __construct(private IgdbClient $igdb, private DataLanguage $language)
     {
@@ -217,6 +217,8 @@ class IgdbGames implements Source
             'genreSlugs' => $slugs(array_values(array_filter($g['genres'] ?? [], fn ($x) => isset($x['name'])))),
             'modeSlugs' => $slugs(array_values(array_filter($g['game_modes'] ?? [], fn ($x) => isset($x['name'])))),
             'platforms' => self::platforms($g['platforms'] ?? [], false),
+            // Expansion, remake…: the card's first chip (null for a game).
+            'type' => self::typeLabel($g),
             'critic' => isset($g['aggregated_rating']) ? (int) round($g['aggregated_rating']) : null,
             'criticCount' => $g['aggregated_rating_count'] ?? null,
             'users' => isset($g['rating']) ? (int) round($g['rating']) : null,

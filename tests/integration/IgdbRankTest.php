@@ -115,6 +115,13 @@ class IgdbRankTest extends TestCase
     }
 
     #[Test]
+    public function the_card_carries_the_version_label_too(): void
+    {
+        $this->assertSame('remake', IgdbGames::normalize(['name' => 'Final Fantasy VII Remake', 'game_type' => 8], null)['type']);
+        $this->assertNull(IgdbGames::normalize(['name' => 'Final Fantasy VII Rebirth', 'game_type' => 0], null)['type']);
+    }
+
+    #[Test]
     public function rows_without_an_id_or_name_are_dropped(): void
     {
         $this->assertSame([], IgdbGames::rank([['name' => 'x'], ['id' => 1], 'junk'], 'x'));

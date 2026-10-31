@@ -59,6 +59,10 @@ return [
         ->command(Console\DescribeCommand::class)
         ->schedule(Console\DescribeCommand::class, function (Event $event): void {
             $event->daily()->withoutOverlapping();
+        })
+        ->command(Console\GameTypesCommand::class)
+        ->schedule(Console\GameTypesCommand::class, function (Event $event): void {
+            $event->daily()->withoutOverlapping();
         }),
 
     (new Extend\Settings())

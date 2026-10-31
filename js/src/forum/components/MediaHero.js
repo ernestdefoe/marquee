@@ -220,8 +220,10 @@ function subject(media, d, season, episode, seasonData) {
       score: [
         ring(d.critic, t('hero.critic_rating'), 'critic'),
         ring(d.users, t('hero.member_rating'), 'users'),
-        d.platforms.length ? (
+        // What this version is (Expansion, Remake…) first, as in search results.
+        d.type || d.platforms.length ? (
           <ul className="MarqueeHero-chips">
+            {d.type ? <li className="MarqueeHero-type">{t(`picker.type.${d.type}`)}</li> : null}
             {d.platforms.map((p) => (
               <li>{p}</li>
             ))}
