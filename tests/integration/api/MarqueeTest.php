@@ -341,6 +341,32 @@ class MarqueeTest extends TestCase
     }
 
     #[Test]
+    public function two_requests_storing_the_same_new_title_at_once_both_get_it(): void
+    {
+        // Wlork, Discuss d/40077 #94: picking a title stores it in the background, and
+        // saving straight away stores it again. Both found no row, so the second
+        // insert broke the unique key and the save failed with a database error.
+        $c = $this->app()->getContainer();
+        $movies = new class($c->make(TmdbClient::class)) extends \Ernestdefoe\Marquee\Source\TmdbMovies {
+            public function details(string $id): array
+            {
+                // The other request stores the title while this one waits on TMDB.
+                Media::query()->insert(['kind' => 'movie', 'external_id' => $id, 'title' => 'Pragmata', 'fetched_at' => Carbon::now(), 'data' => '{}']);
+
+                return ['title' => 'Pragmata', 'year' => 2026, 'poster' => '/p.jpg'];
+            }
+        };
+        $c->instance(\Ernestdefoe\Marquee\Source\TmdbMovies::class, $movies);
+        $c->forgetInstance(\Ernestdefoe\Marquee\Source\Sources::class);
+        $c->forgetInstance(MediaRepository::class);
+
+        $media = $c->make(MediaRepository::class)->resolve('movie', '999');
+
+        $this->assertSame(1, Media::query()->where('external_id', '999')->count());
+        $this->assertSame(2026, $media->fresh()->year);
+    }
+
+    #[Test]
     public function deleting_a_discussion_deletes_its_titles_and_seasons(): void
     {
         $response = $this->send($this->request('DELETE', '/api/discussions/2', ['authenticatedAs' => 1]));

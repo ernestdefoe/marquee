@@ -10,6 +10,7 @@ use Ernestdefoe\Marquee\Source\Sources;
 use Ernestdefoe\Marquee\Translation\Translator;
 use Ernestdefoe\Marquee\Translation\WikipediaOverview;
 use Flarum\Discussion\Discussion;
+use Illuminate\Database\UniqueConstraintViolationException;
 
 /**
  * Titles and seasons are fetched once and kept. A stored copy is refreshed only
@@ -84,8 +85,7 @@ class MediaRepository
             $data = $this->describeData($kind, $data, $media?->data);
         }
 
-        $media ??= new Media();
-        $media->forceFill([
+        $fields = [
             'kind' => $kind,
             'external_id' => $externalId,
             'title' => mb_substr($data['title'], 0, 255),
@@ -94,7 +94,15 @@ class MediaRepository
             'data' => $data,
             'fetched_at' => Carbon::now(),
             'describe_at' => $pending ? Carbon::now() : $this->describeAt($kind, $data),
-        ])->save();
+        ];
+
+        try {
+            ($media ??= new Media())->forceFill($fields)->save();
+        } catch (UniqueConstraintViolationException) {
+            // Another request (the composer's look-up beside the save) stored it meanwhile.
+            $media = Media::query()->where('kind', $kind)->where('external_id', $externalId)->firstOrFail();
+            $media->forceFill($fields)->save();
+        }
 
         if ($pending) {
             $this->later->run(fn () => $this->describe($media));
@@ -172,8 +180,14 @@ class MediaRepository
             throw $e;
         }
 
-        $season ??= new Season();
-        $season->forceFill(['media_id' => $media->id, 'number' => $number, 'data' => $data, 'fetched_at' => Carbon::now()])->save();
+        $fields = ['media_id' => $media->id, 'number' => $number, 'data' => $data, 'fetched_at' => Carbon::now()];
+
+        try {
+            ($season ??= new Season())->forceFill($fields)->save();
+        } catch (UniqueConstraintViolationException) {
+            $season = $media->seasons()->where('number', $number)->firstOrFail();
+            $season->forceFill($fields)->save();
+        }
 
         return $season;
     }
