@@ -7,7 +7,21 @@ import tagsLabel from 'ext:flarum/tags/common/helpers/tagsLabel';
 import SeasonBrowser from './SeasonBrowser';
 import EpisodeModal from './EpisodeModal';
 import app from 'flarum/forum/app';
-import { t, text, img, date, runtime, sourceName, pickFromMedia, titleFor, titleYear, igdbTerms, showScores, showSourceLink, shotBackdrop } from '../util';
+import {
+  t,
+  text,
+  img,
+  date,
+  runtime,
+  sourceName,
+  pickFromMedia,
+  titleFor,
+  titleYear,
+  igdbTerms,
+  showScores,
+  showSourceLink,
+  shotBackdrop,
+} from '../util';
 import { loadSeason, primeSeason } from '../api';
 import { startDiscussion } from '../utils/startDiscussion';
 
