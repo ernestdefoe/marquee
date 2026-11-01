@@ -132,6 +132,22 @@ app.initializers.add('ernestdefoe-marquee', () => {
     );
   });
 
+  // Core sizes the scrubber from where it sits on load, below the hero, so a
+  // tall card left it a sliver. Size it from where it sits once the sidebar
+  // sticks under the header instead.
+  extend('flarum/forum/components/PostStreamScrubber', 'onresize', function () {
+    const nav = this.element.closest('.DiscussionPage-nav');
+    if (!nav || !document.querySelector('.MarqueeHero') || getComputedStyle(nav).position !== 'sticky') return;
+
+    const scrollbar = this.element.querySelector('.Scrubber-scrollbar');
+    const stuckTop = parseFloat(getComputedStyle(nav).top) + parseFloat(getComputedStyle(nav).paddingTop);
+    const above = this.element.getBoundingClientRect().top - nav.getBoundingClientRect().top - parseFloat(getComputedStyle(nav).paddingTop);
+    const chrome = this.element.offsetHeight - scrollbar.offsetHeight;
+    const appPadding = parseInt(getComputedStyle(document.getElementById('app')).paddingBottom, 10) || 0;
+
+    scrollbar.style.maxHeight = Math.max(100, window.innerHeight - stuckTop - above - chrome - appPadding) + 'px';
+  });
+
   // The full card needs the details the discussion page loads; until they
   // arrive (or for a discussion with no link) the normal hero shows. With
   // related titles (the rest of a series) the card carries a row of them, and
