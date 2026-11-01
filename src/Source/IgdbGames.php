@@ -43,7 +43,7 @@ class IgdbGames implements Source
     private const BUNDLE = 3;
 
     private const DETAIL_FIELDS = 'name,slug,url,summary,first_release_date,aggregated_rating,aggregated_rating_count,'
-        .'rating,rating_count,cover.image_id,artworks.image_id,artworks.width,artworks.height,artworks.alpha_channel,screenshots.image_id,platforms.name,'
+        .'rating,rating_count,cover.image_id,artworks.image_id,artworks.width,artworks.height,artworks.alpha_channel,screenshots.image_id,screenshots.width,platforms.name,'
         .'platforms.abbreviation,genres.name,genres.slug,game_modes.name,game_modes.slug,involved_companies.company.name,'
         .'involved_companies.developer,involved_companies.publisher,videos.video_id,videos.name,'
         .'franchises.name,collections.name,game_localizations.name,game_localizations.region.identifier,game_type,version_parent';
@@ -67,13 +67,23 @@ class IgdbGames implements Source
         // IGDB ranks search hits by text alone and cannot sort them, so the
         // famous game is often missing from the first few. Take 50 and rank by
         // how many ratings each has; an exact title match with ratings leads.
-        $results = $this->igdb->query('games', implode(' ', [
-            'search '.IgdbClient::quote($query).';',
-            'fields name,game_type,version_parent,first_release_date,total_rating_count,cover.image_id,platforms.abbreviation,platforms.name,genres.name,'
-                .'involved_companies.company.name,involved_companies.developer;',
-            self::WHERE,
-            'limit 50;',
-        ]));
+        $fields = 'fields name,game_type,version_parent,first_release_date,total_rating_count,cover.image_id,platforms.abbreviation,platforms.name,genres.name,'
+            .'involved_companies.company.name,involved_companies.developer;';
+        $results = $this->igdb->query('games', implode(' ', ['search '.IgdbClient::quote($query).';', $fields, self::WHERE, 'limit 50;']));
+
+        // IGDB's search stems some titles to nothing like them: "Going Under"
+        // comes back as fifty "Go! Go!" games and never the game itself. When
+        // nothing found is the title typed, the titles containing it are asked
+        // for too, as Curio does (Wlork, Discuss d/40107 #91, d/40077 #94).
+        $exact = self::plain($query);
+        if (! array_filter($results, fn ($g) => is_array($g) && self::plain((string) ($g['name'] ?? '')) === $exact)) {
+            $seen = array_column(array_filter($results, 'is_array'), 'id');
+            foreach ($this->igdb->query('games', $fields.' where name ~ *'.IgdbClient::quote($query).'* & game_type = '.self::GAME_TYPES.'; limit 20;') as $g) {
+                if (is_array($g) && isset($g['id']) && ! in_array($g['id'], $seen, true)) {
+                    $results[] = $g;
+                }
+            }
+        }
 
         $results = self::rank($results, $query);
         $results = array_slice($results, 0, 8);
@@ -96,7 +106,7 @@ class IgdbGames implements Source
 
     /**
      * An exact title (punctuation aside) that people have rated, or that is an
-     * edition, first; then the most rated. A bundle or DLC nobody has rated
+     * edition, first; then an exact title nobody has rated; then the most rated. A bundle or DLC nobody has rated
      * ("Halo 3 + Halo Wars", "Elden Ring: Tarnished Pack") is a shop listing,
      * not a game people know, so it comes after every game; a rated one (UFO 50, Mass
      * Effect Trilogy) ranks like any game. An edition (Deluxe, Collector's,
@@ -119,6 +129,10 @@ class IgdbGames implements Source
 
             return [
                 ! ($named && ($count > 0 || $parent !== null)),
+                // Then an exact title nobody has rated yet, such as an announced
+                // game (Until Dawn 2, the 2027 Fable): below the list it fell off
+                // (Wlork, Discuss d/40077 #94).
+                ! $named,
                 in_array($g['game_type'] ?? null, [self::DLC, self::BUNDLE], true) && $count === 0,
                 // An edition ranks by its own ratings, but below its game.
                 -($edition && array_key_exists($parent, $ratings) ? min($count, $ratings[$parent]) : $count),
@@ -205,7 +219,14 @@ class IgdbGames implements Source
                 break;
             }
         }
-        $backdrop ??= $g['screenshots'][0]['image_id'] ?? null;
+        // Else the largest screenshot, if it is big enough not to blur when stretched
+        // (Terranigma's are 240px wide; Wlork, Discuss d/40077 #94).
+        $shot = $backdrop === null && ! empty($g['screenshots']);
+        if ($shot) {
+            $shots = $g['screenshots'];
+            usort($shots, fn ($a, $b) => ($b['width'] ?? 0) <=> ($a['width'] ?? 0));
+            $backdrop = ($shots[0]['width'] ?? 0) >= 640 ? $shots[0]['image_id'] : null;
+        }
 
         return [
             'title' => $g['name'],
@@ -226,6 +247,8 @@ class IgdbGames implements Source
             'overview' => $g['summary'] ?? null,
             'poster' => self::image($g['cover']['image_id'] ?? null),
             'backdrop' => self::image($backdrop),
+            // The admin can turn screenshot backgrounds off (Settings::GAME_SCREENSHOT_BACKDROP).
+            'backdropShot' => $shot && $backdrop !== null,
             'screenshots' => array_map(fn ($s) => self::image($s['image_id']), array_slice($g['screenshots'] ?? [], 0, 6)),
             'crew' => [
                 'developer' => $role('developer'),

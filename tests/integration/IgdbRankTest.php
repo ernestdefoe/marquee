@@ -83,6 +83,26 @@ class IgdbRankTest extends TestCase
     }
 
     #[Test]
+    public function an_exact_title_nobody_has_rated_yet_comes_before_other_games(): void
+    {
+        // Wlork, Discuss d/40077 #94: an announced game ranked below every rated
+        // one and fell off the eight results shown ("Until Dawn 2", the 2027 "Fable").
+        $ranked = IgdbGames::rank([
+            ['id' => 30, 'name' => 'Fable', 'game_type' => 0, 'total_rating_count' => 5],
+            ['id' => 31, 'name' => 'Fable', 'game_type' => 0, 'total_rating_count' => 342],
+            ['id' => 32, 'name' => 'Fable', 'game_type' => 0],
+            ['id' => 33, 'name' => 'Fable III', 'game_type' => 0, 'total_rating_count' => 287],
+        ], 'Fable');
+        $this->assertSame([31, 30, 32, 33], array_column($ranked, 'id'));
+
+        $ranked = IgdbGames::rank([
+            ['id' => 40, 'name' => 'Warhammer 40,000: Dawn of War II', 'game_type' => 0, 'total_rating_count' => 141],
+            ['id' => 41, 'name' => 'Until Dawn 2', 'game_type' => 0],
+        ], 'Until Dawn 2');
+        $this->assertSame([41, 40], array_column($ranked, 'id'));
+    }
+
+    #[Test]
     public function expansions_and_dlc_are_searched(): void
     {
         // Elden Ring: Shadow of the Erdtree is an expansion (2); story DLC is filed as DLC (1).
