@@ -97,7 +97,8 @@ class MediaRepository
         ];
 
         try {
-            ($media ??= new Media())->forceFill($fields)->save();
+            // In a savepoint: on PostgreSQL a failed insert would abort the whole save.
+            ($media ??= new Media())->getConnection()->transaction(fn () => $media->forceFill($fields)->save());
         } catch (UniqueConstraintViolationException) {
             // Another request (the composer's look-up beside the save) stored it meanwhile.
             $media = Media::query()->where('kind', $kind)->where('external_id', $externalId)->firstOrFail();
@@ -183,7 +184,7 @@ class MediaRepository
         $fields = ['media_id' => $media->id, 'number' => $number, 'data' => $data, 'fetched_at' => Carbon::now()];
 
         try {
-            ($season ??= new Season())->forceFill($fields)->save();
+            ($season ??= new Season())->getConnection()->transaction(fn () => $season->forceFill($fields)->save());
         } catch (UniqueConstraintViolationException) {
             $season = $media->seasons()->where('number', $number)->firstOrFail();
             $season->forceFill($fields)->save();
