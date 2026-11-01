@@ -27,6 +27,8 @@ ernestdefoe-marquee:
     show_scores_help: "Notes des utilisateurs TMDB, notes de la critique et des membres IGDB et notes Open Library, sur la fiche, les saisons et les épisodes."
     show_source_link_label: "Afficher le bouton « Voir sur TMDB / IGDB… »"
     show_source_link_help: "Le bouton sous la fiche qui ouvre le titre sur sa source. La petite ligne d'attribution (« Données de jeu d'IGDB.com », la mention de TMDB) reste toujours affichée : TMDB exige sa mention et les conditions d'IGDB demandent de le citer."
+    game_screenshot_backdrop_label: Utiliser une capture d'écran comme arrière-plan quand un jeu n'a pas d'illustration
+    game_screenshot_backdrop_help: "IGDB a une illustration large pour la plupart des jeux. Pour les autres, la fiche utilise la plus grande capture d'écran du jeu (jamais une trop petite pour rester nette). Désactivez cette option pour n'afficher aucune image d'arrière-plan pour ces jeux."
     tags_label: Quelles étiquettes utilisent quelle source
     tags_help: "Quand quelqu'un ouvre une discussion sous l'une de ces étiquettes, le champ du titre cherche dans cette source et la discussion affiche la fiche du titre dans son en-tête. Les autres étiquettes gardent l'éditeur habituel."
     source_none: Discussion normale

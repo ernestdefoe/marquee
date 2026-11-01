@@ -128,6 +128,15 @@ export default [
       }),
       82
     )
+    .setting(
+      () => ({
+        setting: 'ernestdefoe-marquee.game_screenshot_backdrop',
+        type: 'switch',
+        label: t('game_screenshot_backdrop_label'),
+        help: t('game_screenshot_backdrop_help'),
+      }),
+      81
+    )
     .customSetting(function () {
       return <TagSources stream={this.setting('ernestdefoe-marquee.tags', '{}')} />;
     }, 80)

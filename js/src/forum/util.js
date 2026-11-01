@@ -124,3 +124,4 @@ export const igdbTerms = (group, names, slugs) =>
 /** Admin display switches (on unless turned off). */
 export const showScores = () => app.forum.attribute('marqueeScores') !== false;
 export const showSourceLink = () => app.forum.attribute('marqueeSourceLink') !== false;
+export const shotBackdrop = () => app.forum.attribute('marqueeShotBackdrop') !== false;

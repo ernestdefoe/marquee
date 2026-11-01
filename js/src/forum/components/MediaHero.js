@@ -7,7 +7,7 @@ import tagsLabel from 'ext:flarum/tags/common/helpers/tagsLabel';
 import SeasonBrowser from './SeasonBrowser';
 import EpisodeModal from './EpisodeModal';
 import app from 'flarum/forum/app';
-import { t, text, img, date, runtime, sourceName, pickFromMedia, titleFor, titleYear, igdbTerms, showScores, showSourceLink } from '../util';
+import { t, text, img, date, runtime, sourceName, pickFromMedia, titleFor, titleYear, igdbTerms, showScores, showSourceLink, shotBackdrop } from '../util';
 import { loadSeason, primeSeason } from '../api';
 import { startDiscussion } from '../utils/startDiscussion';
 
@@ -215,7 +215,9 @@ function subject(media, d, season, episode, seasonData) {
   if (media.kind() === 'game') {
     return {
       poster: d.poster,
-      backdrop: img(d.backdrop, 'w1280'),
+      // A screenshot stands in when IGDB has no wide artwork, unless the admin turned that off.
+      // Titles stored before 1.16 have no backdropShot: their screenshot backdrop was the first one shown.
+      backdrop: shotBackdrop() || !(d.backdropShot ?? (d.screenshots || []).includes(d.backdrop)) ? img(d.backdrop, 'w1280') : null,
       meta: [date(d.date), igdbTerms('mode', d.modes, d.modeSlugs).join(', '), igdbTerms('genre', d.genres, d.genreSlugs).join(', ')],
       score: [
         ring(d.critic, t('hero.critic_rating'), 'critic'),

@@ -84,5 +84,6 @@ return [
         ->default(Settings::SHOW_SOURCE_LINK, true)
         ->default(Settings::LIST_META, 'kind_year')
         ->default(Settings::TITLE_YEAR, true)
+        ->default(Settings::GAME_SCREENSHOT_BACKDROP, true)
         ->default(Settings::TAGS, '{}'),
 ];
