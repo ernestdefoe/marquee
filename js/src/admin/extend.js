@@ -152,6 +152,15 @@ export default [
       }),
       81
     )
+    .setting(
+      () => ({
+        setting: 'ernestdefoe-marquee.backdrop_tag_color',
+        type: 'boolean',
+        label: t('backdrop_tag_color_label'),
+        help: t('backdrop_tag_color_help'),
+      }),
+      81
+    )
     .customSetting(function () {
       return <TagSources stream={this.setting('ernestdefoe-marquee.tags', '{}')} />;
     }, 80)

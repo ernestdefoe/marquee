@@ -22,8 +22,10 @@ final class Settings
     /** A game card's background: artwork_screenshot (a screenshot when there is no artwork) | artwork | none. */
     public const GAME_BACKDROP = 'ernestdefoe-marquee.game_backdrop';
     public const GAME_BACKDROP_CHOICES = ['artwork_screenshot', 'artwork', 'none'];
-    /** A card with no background image is this colour (#rrggbb); empty = its tag's colour. */
+    /** A card with no background image is this colour (#rrggbb); empty = the forum's banner colour. */
     public const BACKDROP_COLOR = 'ernestdefoe-marquee.backdrop_color';
+    /** Without a colour set: the discussion's tag colour when it has one, before the banner's. */
+    public const BACKDROP_TAG_COLOR = 'ernestdefoe-marquee.backdrop_tag_color';
     /** "Title (2020)" in discussion titles and on the card; off = the title alone. */
     public const TITLE_YEAR = 'ernestdefoe-marquee.title_year';
     /** JSON object: tag id => kind (movie | tv | game). */

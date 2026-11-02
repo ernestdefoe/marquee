@@ -722,6 +722,7 @@ class MarqueeTest extends TestCase
         $forum = $this->forumAttributes();
         $this->assertSame('artwork_screenshot', $forum['marqueeGameBackdrop']);
         $this->assertNull($forum['marqueeBackdropColor']);
+        $this->assertFalse($forum['marqueeBackdropTagColor']);
     }
 
     #[Test]
@@ -746,52 +747,112 @@ class MarqueeTest extends TestCase
         $this->assertNull($forum['marqueeBackdropColor']);
     }
 
-    private function uploadBackdrop(int $as, int $discussion = 1)
+    private function uploadBackdrop(int $as, int $discussion = 1, ?int $media = null)
     {
         $path = tempnam(sys_get_temp_dir(), 'bd');
         $image = imagecreatetruecolor(800, 450);
         imagejpeg($image, $path);
 
-        return $this->send($this->request('POST', "/api/marquee/discussions/$discussion/backdrop", ['authenticatedAs' => $as])
-            ->withUploadedFiles(['backdrop' => new \Laminas\Diactoros\UploadedFile($path, filesize($path), UPLOAD_ERR_OK, 'cover.jpg', 'image/jpeg')]));
+        $request = $this->request('POST', "/api/marquee/discussions/$discussion/backdrop", ['authenticatedAs' => $as])
+            ->withUploadedFiles(['backdrop' => new \Laminas\Diactoros\UploadedFile($path, filesize($path), UPLOAD_ERR_OK, 'cover.jpg', 'image/jpeg')]);
+
+        return $this->send($media ? $request->withParsedBody(['media' => (string) $media]) : $request);
     }
 
-    private function setBackdrop(mixed $value, int $as = 1)
+    private function patchDiscussion(array $attributes, int $as = 1)
     {
         return $this->send($this->request('PATCH', '/api/discussions/1', [
             'authenticatedAs' => $as,
-            'json' => ['data' => ['type' => 'discussions', 'id' => '1', 'attributes' => ['marqueeBackdrop' => $value]]],
+            'json' => ['data' => ['type' => 'discussions', 'id' => '1', 'attributes' => $attributes]],
         ]));
+    }
+
+    private function disk(): \Illuminate\Contracts\Filesystem\Filesystem
+    {
+        return $this->app()->getContainer()->make(\Illuminate\Contracts\Filesystem\Factory::class)->disk('flarum-assets');
     }
 
     #[Test]
     public function only_someone_who_may_change_the_link_may_change_the_background(): void
     {
         $this->assertSame(403, $this->uploadBackdrop(2)->getStatusCode());
-        $this->assertSame(403, $this->setBackdrop('none', 2)->getStatusCode());
-        $this->assertNull(Discussion::find(1)->marquee_backdrop);
+        $this->assertSame(403, $this->patchDiscussion(['marqueeBackdrops' => ['1' => 'none']], 2)->getStatusCode());
+        $this->assertNull(Discussion::find(1)->marquee_backdrops);
     }
 
     #[Test]
-    public function an_uploaded_background_is_stored_shown_and_deleted_when_replaced(): void
+    public function an_uploaded_background_is_stored_shown_and_deleted_when_replaced_or_removed(): void
     {
         $response = $this->uploadBackdrop(1);
         $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
 
-        $path = Discussion::find(1)->marquee_backdrop;
-        $this->assertMatchesRegularExpression('#^marquee-backdrops/1-[a-z0-9]{10}\.webp$#', $path);
-        $disk = $this->app()->getContainer()->make(\Illuminate\Contracts\Filesystem\Factory::class)->disk('flarum-assets');
-        $this->assertTrue($disk->exists($path));
-        $this->assertStringEndsWith($path, $this->json($response)['data']['backdrop']);
+        $first = Discussion::find(1)->marquee_backdrops[1];
+        $this->assertMatchesRegularExpression('#^marquee-backdrops/1-[a-z0-9]{10}\.webp$#', $first);
+        $this->assertTrue($this->disk()->exists($first));
+        $this->assertStringEndsWith($first, $this->json($response)['data']['backdrops']['1']);
 
         $page = $this->json($this->send($this->request('GET', '/api/discussions/1')));
-        $this->assertStringEndsWith($path, $page['data']['attributes']['marqueeBackdrop']);
+        $this->assertStringEndsWith($first, $page['data']['attributes']['marqueeBackdrops']['1']);
 
-        // Anything but the source's own or none is refused; none deletes the file.
-        $this->assertSame(422, $this->setBackdrop('https://example.com/x.jpg')->getStatusCode());
-        $this->assertSame(200, $this->setBackdrop('none')->getStatusCode());
-        $this->assertSame('none', Discussion::find(1)->marquee_backdrop);
-        $this->assertFalse($disk->exists($path));
+        // Replacing deletes the old file.
+        $this->uploadBackdrop(1);
+        $second = Discussion::find(1)->marquee_backdrops[1];
+        $this->assertNotSame($first, $second);
+        $this->assertFalse($this->disk()->exists($first));
+
+        // Anything but the source's own or none is refused; deleting removes the file.
+        $this->assertSame(422, $this->patchDiscussion(['marqueeBackdrops' => ['1' => 'https://example.com/x.jpg']])->getStatusCode());
+        $this->assertSame(200, $this->patchDiscussion(['marqueeBackdrops' => ['1' => null]])->getStatusCode());
+        $this->assertNull(Discussion::find(1)->marquee_backdrops);
+        $this->assertFalse($this->disk()->exists($second));
+
+        $this->uploadBackdrop(1);
+        $third = Discussion::find(1)->marquee_backdrops[1];
+        $this->assertSame(200, $this->patchDiscussion(['marqueeBackdrops' => ['1' => 'none']])->getStatusCode());
+        $this->assertSame([1 => 'none'], Discussion::find(1)->marquee_backdrops);
+        $this->assertFalse($this->disk()->exists($third));
+    }
+
+    #[Test]
+    public function each_title_on_the_card_has_its_own_background(): void
+    {
+        $this->prepareDatabase([Discussion::class => [
+            ['id' => 3, 'title' => 'The Matrix and friends', 'user_id' => 1, 'created_at' => Carbon::now()->toDateTimeString(), 'comment_count' => 1, 'marquee_media_id' => 1, 'marquee_related' => '[2]'],
+        ]]);
+
+        // Only titles on the card.
+        $this->assertSame(422, $this->uploadBackdrop(1, 3, 99)->getStatusCode());
+
+        $this->assertSame(200, $this->uploadBackdrop(1, 3, 2)->getStatusCode());
+        $this->assertSame(200, $this->uploadBackdrop(1, 3)->getStatusCode());
+        $map = Discussion::find(3)->marquee_backdrops;
+        $this->assertEqualsCanonicalizing([1, 2], array_keys($map));
+        $this->assertNotSame($map[1], $map[2]);
+
+        $response = $this->send($this->request('PATCH', '/api/discussions/3', [
+            'authenticatedAs' => 1,
+            'json' => ['data' => ['type' => 'discussions', 'id' => '3', 'attributes' => ['marqueeBackdrops' => ['99' => 'none']]]],
+        ]));
+        $this->assertSame(422, $response->getStatusCode());
+
+        // A related title taken off the card takes its background with it.
+        $response = $this->send($this->request('PATCH', '/api/discussions/3', [
+            'authenticatedAs' => 1,
+            'json' => ['data' => ['type' => 'discussions', 'id' => '3', 'attributes' => ['marqueeRelated' => []]]],
+        ]));
+        $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertSame([1 => $map[1]], Discussion::find(3)->marquee_backdrops);
+        $this->assertFalse($this->disk()->exists($map[2]));
+        $this->assertTrue($this->disk()->exists($map[1]));
+
+        // No card, no backgrounds.
+        $response = $this->send($this->request('PATCH', '/api/discussions/3', [
+            'authenticatedAs' => 1,
+            'json' => ['data' => ['type' => 'discussions', 'id' => '3', 'attributes' => ['marquee' => null]]],
+        ]));
+        $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertNull(Discussion::find(3)->marquee_backdrops);
+        $this->assertFalse($this->disk()->exists($map[1]));
     }
 
     #[Test]
@@ -804,6 +865,6 @@ class MarqueeTest extends TestCase
             ->withUploadedFiles(['backdrop' => new \Laminas\Diactoros\UploadedFile($path, filesize($path), UPLOAD_ERR_OK, 'x.jpg', 'image/jpeg')]));
 
         $this->assertSame(422, $response->getStatusCode());
-        $this->assertNull(Discussion::find(1)->marquee_backdrop);
+        $this->assertNull(Discussion::find(1)->marquee_backdrops);
     }
 }

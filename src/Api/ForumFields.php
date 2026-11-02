@@ -31,6 +31,7 @@ class ForumFields
             Schema\Str::make('marqueeBackdropColor')
                 ->nullable()
                 ->get(fn () => Backdrops::color((string) $this->settings->get(Settings::BACKDROP_COLOR))),
+            Schema\Boolean::make('marqueeBackdropTagColor')->get(fn () => (bool) $this->settings->get(Settings::BACKDROP_TAG_COLOR)),
             Schema\Boolean::make('marqueeTitleYear')->get(fn () => (bool) $this->settings->get(Settings::TITLE_YEAR)),
             Schema\Str::make('marqueeListMeta')->get(function () {
                 $value = (string) $this->settings->get(Settings::LIST_META);

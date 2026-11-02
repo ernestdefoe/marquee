@@ -34,7 +34,9 @@ ernestdefoe-marquee:
       artwork: Artwork only
       none: No background image
     backdrop_color_label: Card color without a background image
-    backdrop_color_help: Used by any card that has no background image. Leave it empty to use the discussion's tag color, as Flarum's own discussion header does.
+    backdrop_color_help: Used by any card that has no background image. Leave it empty to use the forum's banner color, as the welcome banner does.
+    backdrop_tag_color_label: Use the discussion's tag color when no card color is set
+    backdrop_tag_color_help: As Flarum's own discussion header does. A discussion whose tags have no color uses the banner color.
     tags_label: Which tags use which source
     tags_help: "When someone starts a discussion under one of these tags, the title field searches that source and the discussion shows the title's card in its header. Every other tag keeps the normal composer."
     source_none: Normal discussion
@@ -197,7 +199,10 @@ ernestdefoe-marquee:
       backdrop_own: Your own image
       backdrop_upload: Upload an image
       backdrop_replace: Replace image
-      backdrop_help: "JPG, PNG or WebP, up to 8 MB. 1920 × 1080 or larger looks best. The image is used as soon as it's uploaded."
+      backdrop_for: Background for
+      backdrop_delete: Delete image
+      backdrop_deleted: The image was deleted.
+      backdrop_help: "JPG, PNG or WebP, up to 8 MB. 1920 × 1080 or larger looks best. Uploading or deleting an image takes effect at once. Each title on the card has its own background."
       backdrop_uploaded: The background was uploaded.
       edit_card: Edit this card
 

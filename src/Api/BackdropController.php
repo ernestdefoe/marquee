@@ -16,9 +16,10 @@ use Psr\Http\Message\UploadedFileInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /**
- * A discussion's own card background: POST /marquee/discussions/{id}/backdrop
- * with the image as `backdrop`. Allowed to whoever may change the discussion's
- * linked title. Replaces (and deletes) the one it had.
+ * A title's own background on a discussion's card: POST
+ * /marquee/discussions/{id}/backdrop with the image as `backdrop` and the
+ * title's id as `media` (the linked title when left out). Allowed to whoever
+ * may change the discussion's linked title. Replaces (and deletes) the one it had.
  */
 class BackdropController implements RequestHandlerInterface
 {
@@ -39,7 +40,8 @@ class BackdropController implements RequestHandlerInterface
 
         $discussion = Discussion::whereVisibleTo($actor)->findOrFail((int) Arr::get($request->getAttribute('routeParameters'), 'id'));
 
-        if (! $discussion->marquee_media_id || ! DiscussionFields::canLink($actor, $discussion)) {
+        $ids = DiscussionFields::titleIds($discussion);
+        if (! $ids || ! DiscussionFields::canLink($actor, $discussion)) {
             return new JsonResponse(['errors' => [['status' => '403', 'code' => 'permission_denied']]], 403);
         }
 
@@ -53,13 +55,20 @@ class BackdropController implements RequestHandlerInterface
             throw new ValidationException(['backdrop' => $this->translator->trans('validation.required', ['attribute' => 'backdrop'])]);
         }
 
+        $media = (int) (Arr::get((array) $request->getParsedBody(), 'media') ?: $ids[0]);
+        if (! in_array($media, $ids, true)) {
+            throw new ValidationException(['media' => $this->translator->trans('validation.in', ['attribute' => 'media'])]);
+        }
+
         $this->validator->assertImageValid('backdrop', $file);
 
-        $before = $discussion->marquee_backdrop;
-        $discussion->marquee_backdrop = $this->backdrops->store($discussion->id, (string) $file->getStream()->getMetadata('uri'));
+        $map = (array) ($discussion->marquee_backdrops ?? []);
+        $before = $map[$media] ?? null;
+        $map[$media] = $this->backdrops->store($discussion->id, (string) $file->getStream()->getMetadata('uri'));
+        $discussion->marquee_backdrops = $map;
         $discussion->save();
         $this->backdrops->delete($before);
 
-        return new JsonResponse(['data' => ['backdrop' => $this->backdrops->value($discussion->marquee_backdrop)]]);
+        return new JsonResponse(['data' => ['backdrops' => $this->backdrops->values($map)]]);
     }
 }

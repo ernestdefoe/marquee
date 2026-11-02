@@ -35,9 +35,13 @@ export default class LinkModal extends FormModal {
     this.rename = true;
     this.saving = false;
 
-    // null (the source's), 'none', or an uploaded image's address.
-    this.backdrop = discussion.attribute('marqueeBackdrop') ?? null;
+    // Each title's background: 'none' or an uploaded image's address; a title
+    // not in it has the source's. Opened from the card: the title it shows.
+    this.savedBackdrops = discussion.attribute('marqueeBackdrops') || {};
+    this.backdrops = { ...this.savedBackdrops };
+    this.backdropFor = (this.attrs.media || current?.media)?.id();
     this.uploading = false;
+    this.deleting = false;
   }
 
   /** The page knows the linked episode's number; its name comes from the season. */
@@ -135,14 +139,28 @@ export default class LinkModal extends FormModal {
     );
   }
 
-  /** The card's background: the source's, none, or an uploaded image. */
+  /** The titles on the card as saved, still on it: the linked one, then its related titles. */
+  backdropTitles() {
+    const kept = (media) => this.related.some((r) => r.kind === media.kind() && r.externalId === media.externalId());
+    return [this.current.media, ...(this.attrs.discussion.marqueeRelatedMedia() || []).filter((media) => media && kept(media))];
+  }
+
+  /** A title's background: the source's, none, or an uploaded image. */
   backdropField() {
-    const own = this.backdrop && this.backdrop !== 'none';
-    const choice = (value, label) => (
+    const titles = this.backdropTitles();
+    if (!titles.some((media) => media.id() === this.backdropFor)) this.backdropFor = titles[0].id();
+    const id = this.backdropFor;
+    const value = this.backdrops[id] ?? null;
+    const own = value && value !== 'none';
+    const choice = (choice, label) => (
       <Button
-        className={classList('Button', { active: value === 'own' ? own : this.backdrop === value })}
-        aria-pressed={String(value === 'own' ? own : this.backdrop === value)}
-        onclick={() => (value === 'own' ? this.element.querySelector('.MarqueeLinkModal-file').click() : (this.backdrop = value))}
+        className={classList('Button', { active: choice === 'own' ? own : value === choice })}
+        aria-pressed={String(choice === 'own' ? own : value === choice)}
+        onclick={() => {
+          if (choice === 'own') this.element.querySelector('.MarqueeLinkModal-file').click();
+          else if (choice === null) delete this.backdrops[id];
+          else this.backdrops[id] = choice;
+        }}
       >
         {label}
       </Button>
@@ -151,39 +169,61 @@ export default class LinkModal extends FormModal {
     return (
       <div className="Form-group MarqueeLinkModal-backdrop">
         <label>{t('link.backdrop_label')}</label>
+        {titles.length > 1 ? (
+          <select className="FormControl" aria-label={text('link.backdrop_for')} value={id} onchange={(e) => (this.backdropFor = e.target.value)}>
+            {titles.map((media) => (
+              <option value={media.id()}>{media.year() ? `${media.title()} (${media.year()})` : media.title()}</option>
+            ))}
+          </select>
+        ) : null}
         <div className="ButtonGroup">
           {choice(null, t('link.backdrop_default'))}
           {choice('none', t('link.backdrop_none'))}
           {choice('own', t('link.backdrop_own'))}
         </div>
-        {own ? <img className="MarqueeLinkModal-backdropPreview" src={this.backdrop} alt="" /> : null}
+        {own ? <img className="MarqueeLinkModal-backdropPreview" src={value} alt="" /> : null}
         <input
           className="MarqueeLinkModal-file"
           type="file"
           accept="image/jpeg,image/png,image/webp"
           hidden
-          onchange={(e) => this.upload(e.target)}
+          onchange={(e) => this.upload(e.target, id)}
         />
-        <Button
-          className="Button"
-          icon="fas fa-upload"
-          loading={this.uploading}
-          onclick={() => this.element.querySelector('.MarqueeLinkModal-file').click()}
-        >
-          {own ? t('link.backdrop_replace') : t('link.backdrop_upload')}
-        </Button>
+        <div className="MarqueeLinkModal-backdropActions">
+          <Button
+            className="Button"
+            icon="fas fa-upload"
+            loading={this.uploading}
+            onclick={() => this.element.querySelector('.MarqueeLinkModal-file').click()}
+          >
+            {own ? t('link.backdrop_replace') : t('link.backdrop_upload')}
+          </Button>
+          {own && this.savedBackdrops[id] === value ? (
+            <Button className="Button Button--danger" icon="fas fa-trash-alt" loading={this.deleting} onclick={() => this.deleteImage(id)}>
+              {t('link.backdrop_delete')}
+            </Button>
+          ) : null}
+        </div>
         <p className="helpText">{t('link.backdrop_help')}</p>
       </div>
     );
   }
 
-  upload(input) {
+  /** The background as saved, now that an upload or a delete has changed it. */
+  savedAs(backdrops, id) {
+    this.savedBackdrops = backdrops || {};
+    if (this.savedBackdrops[id]) this.backdrops[id] = this.savedBackdrops[id];
+    else delete this.backdrops[id];
+  }
+
+  upload(input, id) {
     const file = input.files && input.files[0];
     input.value = '';
     if (!file) return;
 
     const body = new FormData();
     body.append('backdrop', file);
+    body.append('media', id);
     this.uploading = true;
     m.redraw();
 
@@ -196,14 +236,32 @@ export default class LinkModal extends FormModal {
       })
       .then(
         (response) => {
-          this.backdrop = response.data.backdrop;
-          this.attrs.discussion.pushAttributes({ marqueeBackdrop: this.backdrop });
+          this.savedAs(response.data.backdrops, id);
+          this.attrs.discussion.pushAttributes({ marqueeBackdrops: this.savedBackdrops });
           app.alerts.show({ type: 'success' }, text('link.backdrop_uploaded'));
         },
         () => {}
       )
       .finally(() => {
         this.uploading = false;
+        m.redraw();
+      });
+  }
+
+  /** Deleted at once, as an upload is saved at once: the file goes with it. */
+  deleteImage(id) {
+    this.deleting = true;
+    this.attrs.discussion
+      .save({ marqueeBackdrops: { [id]: null } })
+      .then(
+        () => {
+          this.savedAs(this.attrs.discussion.attribute('marqueeBackdrops'), id);
+          app.alerts.show({ type: 'success' }, text('link.backdrop_deleted'));
+        },
+        () => {}
+      )
+      .finally(() => {
+        this.deleting = false;
         m.redraw();
       });
   }
@@ -258,10 +316,13 @@ export default class LinkModal extends FormModal {
       marquee: link ? { kind: link.kind, id: link.externalId, season: link.season || null, episode: link.episode ? link.episode.n : null } : null,
     };
     if (link) attributes.marqueeRelated = this.related.map((r) => ({ kind: r.kind, id: r.externalId }));
-    // An upload is already saved; only switching back to the source's, or to none, is sent.
-    if (link && (this.backdrop === null || this.backdrop === 'none') && this.backdrop !== (discussion.attribute('marqueeBackdrop') ?? null)) {
-      attributes.marqueeBackdrop = this.backdrop;
-    }
+    // Uploads are already saved; only switching back to the source's, or to none, is sent.
+    const backdrops = {};
+    Object.keys({ ...this.savedBackdrops, ...this.backdrops }).forEach((id) => {
+      const value = this.backdrops[id] ?? null;
+      if ((value === null || value === 'none') && value !== (this.savedBackdrops[id] ?? null)) backdrops[id] = value;
+    });
+    if (link && Object.keys(backdrops).length) attributes.marqueeBackdrops = backdrops;
 
     // Only rename once the episode's name is known (see oninit).
     if (link && this.rename && (!link.episode || link.episode.title)) {

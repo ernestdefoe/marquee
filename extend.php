@@ -41,7 +41,7 @@ return [
         ->cast('marquee_season', 'integer')
         ->cast('marquee_episode', 'integer')
         ->cast('marquee_related', 'array')
-        ->cast('marquee_backdrop', 'string'),
+        ->cast('marquee_backdrops', 'array'),
 
     new Extend\ApiResource(Api\MediaResource::class),
 
@@ -78,7 +78,7 @@ return [
     (new Extend\Event())
         ->listen(Deleted::class, function (Deleted $event): void {
             resolve(MediaRepository::class)->prune([$event->discussion->marquee_media_id, ...(array) ($event->discussion->marquee_related ?? [])]);
-            resolve(Backdrops::class)->delete($event->discussion->marquee_backdrop);
+            resolve(Backdrops::class)->deleteAll($event->discussion->marquee_backdrops);
         }),
 
     (new Extend\Settings())
@@ -90,5 +90,6 @@ return [
         ->default(Settings::TITLE_YEAR, true)
         ->default(Settings::GAME_BACKDROP, 'artwork_screenshot')
         ->default(Settings::BACKDROP_COLOR, '')
+        ->default(Settings::BACKDROP_TAG_COLOR, false)
         ->default(Settings::TAGS, '{}'),
 ];

@@ -22,6 +22,8 @@ import {
   showSourceLink,
   gameBackdrop,
   backdropColor,
+  backdropTagColor,
+  hexColor,
 } from '../util';
 import { loadSeason, primeSeason } from '../api';
 import { startDiscussion } from '../utils/startDiscussion';
@@ -469,12 +471,16 @@ export default class MediaHero extends Component {
         ? !main.episode && ![false, true].some((year) => titleFor(pickFromMedia(main.media), main.season, null, year) === title)
         : workTitle !== title && titleFor(pick, season, ep, true) !== title;
 
-    // The discussion's own background (uploaded, or none at all) belongs to its
-    // linked title, not to a related one shown in its place.
-    const own = !main || main.media === media ? discussion.attribute('marqueeBackdrop') : null;
+    // Each title on the card may have its own background (uploaded, or none).
+    const own = (discussion.attribute('marqueeBackdrops') || {})[media.id()];
     const backdrop = own === 'none' ? null : own || s.backdrop;
-    // Without an image: the admin's colour, or the tag's, as Flarum's own header.
-    const color = backdrop ? null : backdropColor() || (tags || []).map((tag) => tag.color()).find(Boolean) || null;
+    // Without an image: the admin's colour, the tag's if chosen (as Flarum's own
+    // header), or the forum's banner colour (as the welcome banner).
+    const color = backdrop
+      ? null
+      : backdropColor() ||
+        (backdropTagColor() && (tags || []).map((tag) => tag.color()).find(Boolean)) ||
+        hexColor(getComputedStyle(document.body).getPropertyValue('--hero-bg').trim());
 
     return (
       <header
@@ -494,7 +500,7 @@ export default class MediaHero extends Component {
             icon="fas fa-pen"
             aria-label={text('link.edit_card')}
             title={text('link.edit_card')}
-            onclick={() => app.modal.show(LinkModal, { discussion })}
+            onclick={() => app.modal.show(LinkModal, { discussion, media })}
           />
         ) : null}
         <div className="container MarqueeHero-inner">

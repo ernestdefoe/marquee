@@ -126,5 +126,14 @@ export const showScores = () => app.forum.attribute('marqueeScores') !== false;
 export const showSourceLink = () => app.forum.attribute('marqueeSourceLink') !== false;
 /** A game card's background: artwork_screenshot | artwork | none. */
 export const gameBackdrop = () => app.forum.attribute('marqueeGameBackdrop') || 'artwork_screenshot';
-/** The colour of a card with no background image; null = its tag's. */
+/** The colour of a card with no background image; null = its tag's or the forum's banner colour. */
 export const backdropColor = () => app.forum.attribute('marqueeBackdropColor') || null;
+export const backdropTagColor = () => !!app.forum.attribute('marqueeBackdropTagColor');
+
+/** A CSS colour (a theme's custom property, say) as #rrggbb, or null when it isn't an opaque one. */
+export const hexColor = (value) => {
+  const ctx = (hexColor.ctx ||= document.createElement('canvas').getContext('2d'));
+  ctx.fillStyle = '#010203';
+  ctx.fillStyle = value;
+  return value && ctx.fillStyle !== '#010203' && ctx.fillStyle[0] === '#' ? ctx.fillStyle : null;
+};

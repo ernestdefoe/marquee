@@ -58,24 +58,6 @@ class DiscussionFields
                 ->withLinkage(fn (Context $context) => $context->showing(DiscussionResource::class) || $context->updating(DiscussionResource::class))
                 ->get(fn (Discussion $d) => self::related($d)),
 
-            // The card's own background: null (the source's), "none", or an
-            // uploaded image's address. Uploading goes through BackdropController;
-            // this only switches back to the source's or to none.
-            Schema\Str::make('marqueeBackdrop')
-                ->nullable()
-                ->visible(fn (Discussion $d, Context $context) => $context->showing(DiscussionResource::class) || $context->updating(DiscussionResource::class))
-                ->get(fn (Discussion $d) => $this->backdrops->value($d->marquee_backdrop))
-                ->writable(fn (Discussion $d, Context $context) => ! $context->creating() && self::canLink($context->getActor(), $d))
-                ->set(function (Discussion $d, mixed $value) {
-                    if ($value !== null && $value !== Backdrops::NONE) {
-                        $this->fail('invalid');
-                    }
-
-                    $before = $d->marquee_backdrop;
-                    $d->marquee_backdrop = $value;
-                    $d->afterSave(fn () => $before !== $value ? $this->backdrops->delete($before) : null);
-                }),
-
             Schema\Boolean::make('canMarqueeLink')
                 ->get(fn (Discussion $d, Context $context) => self::canLink($context->getActor(), $d)),
 
@@ -91,6 +73,17 @@ class DiscussionFields
                 ->hidden()
                 ->writable(fn (Discussion $d, Context $context) => ! $context->creating() && self::canLink($context->getActor(), $d))
                 ->set(fn (Discussion $d, mixed $value) => $this->relate($d, $value)),
+
+            // Each title's own background: { titleId: "none" or an uploaded
+            // image's address }; a title not in it has the source's. Uploading
+            // goes through BackdropController. Written as changes after
+            // `marqueeRelated`: { titleId: null (the source's) or "none" }.
+            Schema\Attribute::make('marqueeBackdrops')
+                ->nullable()
+                ->visible(fn (Discussion $d, Context $context) => $context->showing(DiscussionResource::class) || $context->updating(DiscussionResource::class))
+                ->get(fn (Discussion $d) => $this->backdrops->values($d->marquee_backdrops))
+                ->writable(fn (Discussion $d, Context $context) => ! $context->creating() && self::canLink($context->getActor(), $d))
+                ->set(fn (Discussion $d, mixed $value) => $this->setBackdrops($d, $value)),
         ];
     }
 
@@ -120,11 +113,7 @@ class DiscussionFields
             $discussion->marquee_season = null;
             $discussion->marquee_episode = null;
             $discussion->marquee_related = null;
-
-            // No card, so no card background either.
-            $backdrop = $discussion->marquee_backdrop;
-            $discussion->marquee_backdrop = null;
-            $discussion->afterSave(fn () => $this->backdrops->delete($backdrop));
+            $this->keepBackdrops($discussion);
 
             return;
         }
@@ -167,6 +156,7 @@ class DiscussionFields
         $discussion->marquee_season = $season;
         $discussion->marquee_episode = $episode;
         $discussion->setRelation('marqueeMedia', $media);
+        $this->keepBackdrops($discussion);
     }
 
     /** At most this many related titles: a row of chips, not a catalogue. */
@@ -191,6 +181,7 @@ class DiscussionFields
 
         if ($value === [] || $value === null) {
             $discussion->marquee_related = null;
+            $this->keepBackdrops($discussion);
 
             return;
         }
@@ -218,6 +209,60 @@ class DiscussionFields
         // Not the linked title itself, and each title once.
         $ids = array_values(array_unique(array_diff($ids, [(int) $discussion->marquee_media_id])));
         $discussion->marquee_related = $ids ?: null;
+        $this->keepBackdrops($discussion);
+    }
+
+    /** @return list<int> the ids of the titles on the card: the linked one, then its related titles */
+    public static function titleIds(Discussion $discussion): array
+    {
+        if (! $discussion->marquee_media_id) {
+            return [];
+        }
+
+        return [(int) $discussion->marquee_media_id, ...array_map('intval', (array) ($discussion->marquee_related ?? []))];
+    }
+
+    /** Backgrounds of titles no longer on the card go, files and all. */
+    private function keepBackdrops(Discussion $discussion): void
+    {
+        $map = (array) ($discussion->marquee_backdrops ?? []);
+        $kept = array_intersect_key($map, array_flip(self::titleIds($discussion)));
+
+        if (count($kept) !== count($map)) {
+            $discussion->marquee_backdrops = $kept ?: null;
+            $discussion->afterSave(fn () => $this->backdrops->deleteAll(array_diff_key($map, $kept)));
+        }
+    }
+
+    /** Back to the source's (null) or to none ("none"), for titles on the card. */
+    private function setBackdrops(Discussion $discussion, mixed $value): void
+    {
+        $ids = self::titleIds($discussion);
+        if (! is_array($value) || array_is_list($value) && $value !== []) {
+            $this->fail('invalid');
+        }
+
+        $map = (array) ($discussion->marquee_backdrops ?? []);
+        $gone = [];
+        foreach ($value as $id => $choice) {
+            if (! in_array((int) $id, $ids, true) || ($choice !== null && $choice !== Backdrops::NONE)) {
+                $this->fail('invalid');
+            }
+
+            $gone[] = $map[(int) $id] ?? null;
+            if ($choice === null) {
+                unset($map[(int) $id]);
+            } else {
+                $map[(int) $id] = $choice;
+            }
+        }
+
+        $discussion->marquee_backdrops = $map ?: null;
+        $discussion->afterSave(function () use ($gone) {
+            foreach ($gone as $path) {
+                $this->backdrops->delete($path);
+            }
+        });
     }
 
     /** The titles this discussion linked to before the save go once nothing else uses them. */

@@ -8,10 +8,11 @@ use Illuminate\Support\Str;
 use Intervention\Image\ImageManager;
 
 /**
- * A discussion's own card background, in place of the source's artwork:
- * uploaded by whoever may change its linked title, stored with the forum's
- * other assets. `discussions.marquee_backdrop` holds its path, or "none" for
- * no image at all, or nothing for the source's own.
+ * A card's own backgrounds, in place of the source's artwork: one for each
+ * title on it (the linked one and its related titles), uploaded by whoever may
+ * change its linked title and stored with the forum's other assets.
+ * `discussions.marquee_backdrops` maps a title's id to an image's path, or to
+ * "none" for no image at all; a title not in it has the source's own.
  */
 class Backdrops
 {
@@ -44,14 +45,28 @@ class Backdrops
         }
     }
 
-    /** What the card is told: null (the source's own), "none", or the image's address. */
-    public function value(?string $value): ?string
+    /** @param array<int|string, string>|null $map */
+    public function deleteAll(?array $map): void
     {
-        if (! $value) {
-            return null;
+        foreach ($map ?? [] as $value) {
+            $this->delete($value);
+        }
+    }
+
+    /**
+     * What the card is told: each title's id with "none" or its image's address.
+     *
+     * @param array<int|string, string>|null $map
+     * @return array<string, string>|null
+     */
+    public function values(?array $map): ?array
+    {
+        $values = [];
+        foreach ($map ?? [] as $id => $value) {
+            $values[(string) $id] = $value === self::NONE ? self::NONE : $this->disk->url($value);
         }
 
-        return $value === self::NONE ? self::NONE : $this->disk->url($value);
+        return $values ?: null;
     }
 
     /** A setting's colour as #rrggbb, or null when it is empty or not one. */
