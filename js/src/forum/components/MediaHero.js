@@ -120,161 +120,144 @@ const tracklist = (tracks) =>
     </div>
   ) : null;
 
-/** What the hero is about: the whole title, one season, or one episode. */
-function subject(media, d, season, episode, seasonData) {
-  const summary = season && (d.seasons || []).find((s) => s.number === season);
-  const ep = episode && seasonData && seasonData.episodes.find((e) => e.n === episode);
+/** One episode of a show. */
+const episodeSubject = (d, season, episode, ep, seasonData, summary) => ({
+  poster: seasonData.poster || summary?.poster || d.poster,
+  backdrop: ep.still ? img(ep.still, 'w1280') : img(d.backdrop, 'w1280'),
+  meta: [t('meta.season_episode', { season, episode }), date(ep.date), runtime(ep.runtime)],
+  score: ring(ep.score, t('hero.episode_score')),
+  credits: credits([
+    [t('credits.directed_by'), ep.directors],
+    [t('credits.written_by'), ep.writers],
+    [t('credits.network'), d.networks],
+  ]),
+  overview: ep.overview,
+  people: [t('hero.guest_stars'), ep.guests],
+  url: `${seasonData.url}/episode/${ep.n}`,
+});
 
-  if (ep) {
-    return {
-      poster: seasonData.poster || summary?.poster || d.poster,
-      backdrop: ep.still ? img(ep.still, 'w1280') : img(d.backdrop, 'w1280'),
-      meta: [t('meta.season_episode', { season, episode }), date(ep.date), runtime(ep.runtime)],
-      score: ring(ep.score, t('hero.episode_score')),
-      credits: credits([
-        [t('credits.directed_by'), ep.directors],
-        [t('credits.written_by'), ep.writers],
-        [t('credits.network'), d.networks],
-      ]),
-      overview: ep.overview,
-      people: [t('hero.guest_stars'), ep.guests],
-      url: `${seasonData.url}/episode/${ep.n}`,
-    };
-  }
+/** One season of a show. */
+const seasonSubject = (d, season, summary, seasonData) => ({
+  poster: seasonData?.poster || summary.poster || d.poster,
+  backdrop: img(d.backdrop, 'w1280'),
+  meta: [summary.name, summary.year, t('meta.episodes_count', { count: summary.episodes }), d.genres.join(', ')],
+  score: ring(summary.score, t('hero.season_score')),
+  credits: credits([
+    [t('credits.creator'), d.crew.creator],
+    [t('credits.network'), d.networks],
+  ]),
+  overview: seasonData?.overview || d.overview,
+  people: [t('hero.cast'), d.cast],
+  url: `${d.url}/season/${season}`,
+});
 
-  if (summary) {
-    return {
-      poster: seasonData?.poster || summary.poster || d.poster,
-      backdrop: img(d.backdrop, 'w1280'),
-      meta: [summary.name, summary.year, t('meta.episodes_count', { count: summary.episodes }), d.genres.join(', ')],
-      score: ring(summary.score, t('hero.season_score')),
-      credits: credits([
-        [t('credits.creator'), d.crew.creator],
-        [t('credits.network'), d.networks],
-      ]),
-      overview: seasonData?.overview || d.overview,
-      people: [t('hero.cast'), d.cast],
-      url: `${d.url}/season/${season}`,
-    };
-  }
-
-  if (media.kind() === 'tv') {
-    return {
-      poster: d.poster,
-      backdrop: img(d.backdrop, 'w1280'),
-      meta: [years(d), d.certification, d.networks.join(', '), t('meta.seasons_count', { count: (d.seasons || []).length }), d.genres.join(', ')],
-      score: [ring(d.score, t('hero.user_score')), d.tagline && <p className="MarqueeHero-tagline">{d.tagline}</p>],
-      credits: credits([
-        [t('credits.creator'), d.crew.creator],
-        [t('credits.network'), d.networks],
-        [t('credits.status'), d.status],
-      ]),
-      overview: d.overview,
-      people: [t('hero.cast'), d.cast],
-      url: d.url,
-    };
-  }
-
-  if (media.kind() === 'music') {
-    return {
-      poster: d.poster,
-      backdrop: img(d.backdrop || d.poster, 'w1280'),
-      meta: [
-        date(d.date),
-        t(`meta.record_${d.recordType}`),
-        t('meta.tracks_count', { count: d.trackCount }),
-        runtime(Math.round(d.duration / 60)),
-        d.genres.join(', '),
-      ],
-      score: d.fans ? (
+/** The whole title, one builder per kind; anything else is a movie. */
+const titleSubjects = {
+  tv: (d) => ({
+    poster: d.poster,
+    backdrop: img(d.backdrop, 'w1280'),
+    meta: [years(d), d.certification, d.networks.join(', '), t('meta.seasons_count', { count: (d.seasons || []).length }), d.genres.join(', ')],
+    score: [ring(d.score, t('hero.user_score')), d.tagline && <p className="MarqueeHero-tagline">{d.tagline}</p>],
+    credits: credits([
+      [t('credits.creator'), d.crew.creator],
+      [t('credits.network'), d.networks],
+      [t('credits.status'), d.status],
+    ]),
+    overview: d.overview,
+    people: [t('hero.cast'), d.cast],
+    url: d.url,
+  }),
+  music: (d) => ({
+    poster: d.poster,
+    backdrop: img(d.backdrop || d.poster, 'w1280'),
+    meta: [
+      date(d.date),
+      t(`meta.record_${d.recordType}`),
+      t('meta.tracks_count', { count: d.trackCount }),
+      runtime(Math.round(d.duration / 60)),
+      d.genres.join(', '),
+    ],
+    score: d.fans ? (
+      <p className="MarqueeHero-fans">
+        <i className="fas fa-heart" aria-hidden="true" /> {t('hero.fans', { count: abbreviateNumber(d.fans) })}
+      </p>
+    ) : null,
+    credits: credits([
+      [t('credits.artist'), d.artist],
+      [t('credits.label'), d.label],
+    ]),
+    overview: null,
+    extra: [tracklist(d.tracks)],
+    url: d.url,
+    linkLabel: t('hero.listen_on', { source: 'Deezer' }),
+  }),
+  book: (d) => ({
+    poster: d.poster,
+    backdrop: img(d.poster, 'w1280'),
+    meta: [
+      d.year ? t('meta.first_published', { year: d.year }) : null,
+      d.pages ? t('meta.pages_count', { count: d.pages }) : null,
+      d.editions > 1 ? t('meta.editions_count', { count: d.editions }) : null,
+    ],
+    score: [
+      d.subtitle && <p className="MarqueeHero-tagline">{d.subtitle}</p>,
+      d.rating && showScores() ? (
         <p className="MarqueeHero-fans">
-          <i className="fas fa-heart" aria-hidden="true" /> {t('hero.fans', { count: abbreviateNumber(d.fans) })}
+          <i className="fas fa-star" aria-hidden="true" /> {t('hero.book_rating', { rating: d.rating, count: abbreviateNumber(d.ratingCount) })}
         </p>
       ) : null,
-      credits: credits([
-        [t('credits.artist'), d.artist],
-        [t('credits.label'), d.label],
-      ]),
-      overview: null,
-      extra: [tracklist(d.tracks)],
-      url: d.url,
-      linkLabel: t('hero.listen_on', { source: 'Deezer' }),
-    };
-  }
-
-  if (media.kind() === 'book') {
-    return {
-      poster: d.poster,
-      backdrop: img(d.poster, 'w1280'),
-      meta: [
-        d.year ? t('meta.first_published', { year: d.year }) : null,
-        d.pages ? t('meta.pages_count', { count: d.pages }) : null,
-        d.editions > 1 ? t('meta.editions_count', { count: d.editions }) : null,
-      ],
-      score: [
-        d.subtitle && <p className="MarqueeHero-tagline">{d.subtitle}</p>,
-        d.rating && showScores() ? (
-          <p className="MarqueeHero-fans">
-            <i className="fas fa-star" aria-hidden="true" /> {t('hero.book_rating', { rating: d.rating, count: abbreviateNumber(d.ratingCount) })}
-          </p>
-        ) : null,
-        d.readers ? (
-          <p className="MarqueeHero-fans">
-            <i className="fas fa-bookmark" aria-hidden="true" /> {t('hero.want_to_read', { count: abbreviateNumber(d.readers) })}
-          </p>
-        ) : null,
-        d.subjects.length ? (
-          <ul className="MarqueeHero-chips">
-            {d.subjects.map((subject) => (
-              <li>{subject}</li>
-            ))}
-          </ul>
-        ) : null,
-      ],
-      credits: credits([
-        [t('credits.author'), d.authors],
-        [t('credits.original_title'), d.originalTitle],
-        [t('credits.publisher'), [d.publisher, d.published].filter(Boolean).join(', ')],
-        [t('credits.isbn'), d.isbn],
-      ]),
-      overview: d.overview,
-      untranslated: d.untranslated,
-      people: [t('hero.authors'), d.people.some((p) => p.photo) ? d.people : []],
-      url: d.url,
-    };
-  }
-
-  if (media.kind() === 'game') {
-    return {
-      poster: d.poster,
-      backdrop: gameBackdropOf(d),
-      meta: [date(d.date), igdbTerms('mode', d.modes, d.modeSlugs).join(', '), igdbTerms('genre', d.genres, d.genreSlugs).join(', ')],
-      score: [
-        ring(d.critic, t('hero.critic_rating'), 'critic'),
-        ring(d.users, t('hero.member_rating'), 'users'),
-        // What this version is (Expansion, Remake…) first, as in search results.
-        d.type || d.platforms.length ? (
-          <ul className="MarqueeHero-chips">
-            {d.type ? <li className="MarqueeHero-type">{t(`picker.type.${d.type}`)}</li> : null}
-            {d.platforms.map((p) => (
-              <li>{p}</li>
-            ))}
-          </ul>
-        ) : null,
-      ],
-      credits: credits([
-        [t('credits.developer'), d.crew.developer],
-        [t('credits.publisher'), d.crew.publisher],
-        [t('credits.series'), d.crew.series],
-      ]),
-      overview: d.overview,
-      untranslated: d.untranslated,
-      extra: [timeToBeat(d.timeToBeat), screenshots(d.screenshots)],
-      url: d.url,
-    };
-  }
-
-  return {
+      d.readers ? (
+        <p className="MarqueeHero-fans">
+          <i className="fas fa-bookmark" aria-hidden="true" /> {t('hero.want_to_read', { count: abbreviateNumber(d.readers) })}
+        </p>
+      ) : null,
+      d.subjects.length ? (
+        <ul className="MarqueeHero-chips">
+          {d.subjects.map((subject) => (
+            <li>{subject}</li>
+          ))}
+        </ul>
+      ) : null,
+    ],
+    credits: credits([
+      [t('credits.author'), d.authors],
+      [t('credits.original_title'), d.originalTitle],
+      [t('credits.publisher'), [d.publisher, d.published].filter(Boolean).join(', ')],
+      [t('credits.isbn'), d.isbn],
+    ]),
+    overview: d.overview,
+    untranslated: d.untranslated,
+    people: [t('hero.authors'), d.people.some((p) => p.photo) ? d.people : []],
+    url: d.url,
+  }),
+  game: (d) => ({
+    poster: d.poster,
+    backdrop: gameBackdropOf(d),
+    meta: [date(d.date), igdbTerms('mode', d.modes, d.modeSlugs).join(', '), igdbTerms('genre', d.genres, d.genreSlugs).join(', ')],
+    score: [
+      ring(d.critic, t('hero.critic_rating'), 'critic'),
+      ring(d.users, t('hero.member_rating'), 'users'),
+      // What this version is (Expansion, Remake…) first, as in search results.
+      d.type || d.platforms.length ? (
+        <ul className="MarqueeHero-chips">
+          {d.type ? <li className="MarqueeHero-type">{t(`picker.type.${d.type}`)}</li> : null}
+          {d.platforms.map((p) => (
+            <li>{p}</li>
+          ))}
+        </ul>
+      ) : null,
+    ],
+    credits: credits([
+      [t('credits.developer'), d.crew.developer],
+      [t('credits.publisher'), d.crew.publisher],
+      [t('credits.series'), d.crew.series],
+    ]),
+    overview: d.overview,
+    untranslated: d.untranslated,
+    extra: [timeToBeat(d.timeToBeat), screenshots(d.screenshots)],
+    url: d.url,
+  }),
+  movie: (d) => ({
     poster: d.poster,
     backdrop: img(d.backdrop, 'w1280'),
     meta: [date(d.date), d.certification, runtime(d.runtime), d.genres.join(', ')],
@@ -287,7 +270,18 @@ function subject(media, d, season, episode, seasonData) {
     overview: d.overview,
     people: [t('hero.cast'), d.cast],
     url: d.url,
-  };
+  }),
+};
+
+/** What the hero is about: the whole title, one season, or one episode. */
+function subject(media, d, season, episode, seasonData) {
+  const summary = season && (d.seasons || []).find((s) => s.number === season);
+  const ep = episode && seasonData && seasonData.episodes.find((e) => e.n === episode);
+
+  if (ep) return episodeSubject(d, season, episode, ep, seasonData, summary);
+  if (summary) return seasonSubject(d, season, summary, seasonData);
+
+  return (titleSubjects[media.kind()] || titleSubjects.movie)(d);
 }
 
 /**
