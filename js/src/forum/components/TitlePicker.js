@@ -47,11 +47,32 @@ export default class TitlePicker extends Component {
           oninput={(e) => this.oninput(e.target.value)}
           onkeydown={(e) => this.onkeydown(e)}
           onfocus={() => this.results.length && (this.open = true)}
-          onblur={() => setTimeout(() => ((this.open = false), m.redraw()), 150)}
         />
         {open ? this.dropdown(kind) : null}
       </Tag>
     );
+  }
+
+  oncreate(vnode) {
+    super.oncreate(vnode);
+
+    /*
+     * Closed by a press somewhere else, not by the field losing focus. On a
+     * phone, closing the keyboard blurs the field, and the list went with it
+     * just as it finally had the room to be scrolled.
+     */
+    this.outside = (e) => {
+      if (this.open && !this.element.contains(e.target)) {
+        this.open = false;
+        m.redraw();
+      }
+    };
+    document.addEventListener('pointerdown', this.outside);
+  }
+
+  onremove(vnode) {
+    super.onremove(vnode);
+    document.removeEventListener('pointerdown', this.outside);
   }
 
   onupdate(vnode) {
