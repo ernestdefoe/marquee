@@ -27,8 +27,14 @@ ernestdefoe-marquee:
     show_scores_help: "TMDB user scores, IGDB critic and member ratings and Open Library ratings, on the card, seasons and episodes."
     show_source_link_label: Show the "View on TMDB / IGDB…" button
     show_source_link_help: "The button under the card that opens the title on its source. The small attribution line (\"Game data from IGDB.com\", TMDB's notice) always shows: TMDB requires its notice and IGDB's terms ask for credit."
-    game_screenshot_backdrop_label: Use a screenshot as the background when a game has no artwork
-    game_screenshot_backdrop_help: "IGDB has wide artwork for most games. For the rest, the card uses the game's largest screenshot (never one too small to look sharp). Turn this off to show no background image for those games instead."
+    game_backdrop_label: Game card backgrounds
+    game_backdrop_help: "IGDB has wide artwork for most games. For the rest, the card can use the game's largest screenshot (never one too small to look sharp). Anyone who can change a discussion's linked title can also pick its background, or upload their own."
+    game_backdrop_options:
+      artwork_screenshot: Artwork, or a screenshot when there is none
+      artwork: Artwork only
+      none: No background image
+    backdrop_color_label: Card color without a background image
+    backdrop_color_help: Used by any card that has no background image. Leave it empty to use the discussion's tag color, as Flarum's own discussion header does.
     tags_label: Which tags use which source
     tags_help: "When someone starts a discussion under one of these tags, the title field searches that source and the discussion shows the title's card in its header. Every other tag keeps the normal composer."
     source_none: Normal discussion
@@ -185,6 +191,15 @@ ernestdefoe-marquee:
       rename: "Rename the discussion to {title}"
       save: Save
       saved: The linked title was updated.
+      backdrop_label: Background
+      backdrop_default: Default
+      backdrop_none: None
+      backdrop_own: Your own image
+      backdrop_upload: Upload an image
+      backdrop_replace: Replace image
+      backdrop_help: "JPG, PNG or WebP, up to 8 MB. 1920 × 1080 or larger looks best. The image is used as soon as it's uploaded."
+      backdrop_uploaded: The background was uploaded.
+      edit_card: Edit this card
 
     genre:
       point-and-click: Point-and-click

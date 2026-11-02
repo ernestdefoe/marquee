@@ -1466,3 +1466,68 @@
     margin-top: 10px;
   }
 }
+
+// ---- Card background: a colour when there is no image ---------------------
+// The admin's colour, or the tag's. Darkened so the card's light text stays
+// readable; a light colour is darkened more. At the weight of the card's base
+// rule above, which themes would otherwise lose to.
+.Hero.DiscussionHero.MarqueeHero.MarqueeHero.MarqueeHero.MarqueeHero--color {
+  background: linear-gradient(180deg, rgba(8, 10, 14, 0.2) 0%, rgba(8, 10, 14, 0.55) 100%), var(--marquee-bg) !important;
+
+  &.MarqueeHero--light {
+    background: linear-gradient(180deg, rgba(8, 10, 14, 0.55) 0%, rgba(8, 10, 14, 0.8) 100%), var(--marquee-bg) !important;
+  }
+}
+
+// Edit this card: the linked title, its related titles and its background.
+.MarqueeHero-edit.Button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 50%;
+  color: #f2f0eb;
+  background: rgba(8, 10, 14, 0.45);
+  opacity: 0.75;
+
+  &:hover,
+  &:focus-visible {
+    color: #fff;
+    background: rgba(8, 10, 14, 0.7);
+    opacity: 1;
+  }
+}
+
+.MarqueeLinkModal-backdrop {
+  .ButtonGroup {
+    display: flex;
+    flex-wrap: wrap;
+    align-self: stretch;
+    margin-bottom: 10px;
+
+    .Button {
+      flex: 1 1 auto;
+    }
+
+    .Button.active {
+      color: var(--button-primary-color);
+      background: var(--button-primary-bg);
+    }
+  }
+
+  > .Button {
+    align-self: flex-start;
+  }
+}
+
+.MarqueeLinkModal-backdropPreview {
+  display: block;
+  width: 100%;
+  aspect-ratio: ~"16 / 9";
+  object-fit: cover;
+  border-radius: var(--border-radius);
+  margin-bottom: 10px;
+}

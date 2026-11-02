@@ -19,8 +19,11 @@ final class Settings
     /** What the discussion list says under a linked discussion: kind_year | year | none. */
     public const LIST_META = 'ernestdefoe-marquee.list_meta';
     public const LIST_META_CHOICES = ['kind_year', 'year', 'none'];
-    /** A game with no wide artwork gets its largest screenshot as the card's background; off = none. */
-    public const GAME_SCREENSHOT_BACKDROP = 'ernestdefoe-marquee.game_screenshot_backdrop';
+    /** A game card's background: artwork_screenshot (a screenshot when there is no artwork) | artwork | none. */
+    public const GAME_BACKDROP = 'ernestdefoe-marquee.game_backdrop';
+    public const GAME_BACKDROP_CHOICES = ['artwork_screenshot', 'artwork', 'none'];
+    /** A card with no background image is this colour (#rrggbb); empty = its tag's colour. */
+    public const BACKDROP_COLOR = 'ernestdefoe-marquee.backdrop_color';
     /** "Title (2020)" in discussion titles and on the card; off = the title alone. */
     public const TITLE_YEAR = 'ernestdefoe-marquee.title_year';
     /** JSON object: tag id => kind (movie | tv | game). */

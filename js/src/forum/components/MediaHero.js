@@ -20,10 +20,14 @@ import {
   igdbTerms,
   showScores,
   showSourceLink,
-  shotBackdrop,
+  gameBackdrop,
+  backdropColor,
 } from '../util';
 import { loadSeason, primeSeason } from '../api';
 import { startDiscussion } from '../utils/startDiscussion';
+import Button from 'flarum/common/components/Button';
+import isDark from 'flarum/common/utils/isDark';
+import LinkModal from './LinkModal';
 
 // The admin can hide every score and rating (on by default).
 const ring = (value, label, kind) =>
@@ -35,6 +39,18 @@ const ring = (value, label, kind) =>
       <span className="MarqueeHero-scoreLabel">{label}</span>
     </div>
   ) : null;
+
+/**
+ * A screenshot stands in when IGDB has no wide artwork, unless the admin chose
+ * artwork only, or no image at all. Titles stored before 1.16 have no
+ * backdropShot: their screenshot backdrop was the first one shown.
+ */
+const gameBackdropOf = (d) => {
+  const mode = gameBackdrop();
+  if (mode === 'none') return null;
+  const shot = d.backdropShot ?? (d.screenshots || []).includes(d.backdrop);
+  return mode === 'artwork' && shot ? null : img(d.backdrop, 'w1280');
+};
 
 const credits = (pairs) => pairs.filter(([, names]) => names && names.length).map(([label, names]) => [label, [].concat(names).join(', ')]);
 
@@ -229,9 +245,7 @@ function subject(media, d, season, episode, seasonData) {
   if (media.kind() === 'game') {
     return {
       poster: d.poster,
-      // A screenshot stands in when IGDB has no wide artwork, unless the admin turned that off.
-      // Titles stored before 1.16 have no backdropShot: their screenshot backdrop was the first one shown.
-      backdrop: shotBackdrop() || !(d.backdropShot ?? (d.screenshots || []).includes(d.backdrop)) ? img(d.backdrop, 'w1280') : null,
+      backdrop: gameBackdropOf(d),
       meta: [date(d.date), igdbTerms('mode', d.modes, d.modeSlugs).join(', '), igdbTerms('genre', d.genres, d.genreSlugs).join(', ')],
       score: [
         ring(d.critic, t('hero.critic_rating'), 'critic'),
@@ -455,15 +469,34 @@ export default class MediaHero extends Component {
         ? !main.episode && ![false, true].some((year) => titleFor(pickFromMedia(main.media), main.season, null, year) === title)
         : workTitle !== title && titleFor(pick, season, ep, true) !== title;
 
+    // The discussion's own background (uploaded, or none at all) belongs to its
+    // linked title, not to a related one shown in its place.
+    const own = !main || main.media === media ? discussion.attribute('marqueeBackdrop') : null;
+    const backdrop = own === 'none' ? null : own || s.backdrop;
+    // Without an image: the admin's colour, or the tag's, as Flarum's own header.
+    const color = backdrop ? null : backdropColor() || (tags || []).map((tag) => tag.color()).find(Boolean) || null;
+
     return (
       <header
         className={classList('Hero DiscussionHero MarqueeHero', `MarqueeHero--${media.kind()}`, {
           'MarqueeHero--episode': ep,
           'MarqueeHero--renamed': renamed,
-          'MarqueeHero--backdrop': !!s.backdrop,
+          'MarqueeHero--backdrop': !!backdrop,
+          'MarqueeHero--color': !!color,
+          'MarqueeHero--light': !!color && !isDark(color),
         })}
+        style={color ? { '--marquee-bg': color } : undefined}
       >
-        {s.backdrop ? <div className="MarqueeHero-backdrop" style={{ backgroundImage: `url(${s.backdrop})` }} /> : null}
+        {backdrop ? <div className="MarqueeHero-backdrop" style={{ backgroundImage: `url(${backdrop})` }} /> : null}
+        {discussion.attribute('canMarqueeLink') ? (
+          <Button
+            className="Button Button--icon MarqueeHero-edit"
+            icon="fas fa-pen"
+            aria-label={text('link.edit_card')}
+            title={text('link.edit_card')}
+            onclick={() => app.modal.show(LinkModal, { discussion })}
+          />
+        ) : null}
         <div className="container MarqueeHero-inner">
           {s.poster ? (
             <img className="MarqueeHero-poster" src={img(s.poster, 'w342')} alt="" fetchpriority="high" />

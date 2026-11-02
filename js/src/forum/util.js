@@ -124,4 +124,7 @@ export const igdbTerms = (group, names, slugs) =>
 /** Admin display switches (on unless turned off). */
 export const showScores = () => app.forum.attribute('marqueeScores') !== false;
 export const showSourceLink = () => app.forum.attribute('marqueeSourceLink') !== false;
-export const shotBackdrop = () => app.forum.attribute('marqueeShotBackdrop') !== false;
+/** A game card's background: artwork_screenshot | artwork | none. */
+export const gameBackdrop = () => app.forum.attribute('marqueeGameBackdrop') || 'artwork_screenshot';
+/** The colour of a card with no background image; null = its tag's. */
+export const backdropColor = () => app.forum.attribute('marqueeBackdropColor') || null;

@@ -710,4 +710,100 @@ class MarqueeTest extends TestCase
         $this->assertTrue($forum['marqueeTitleYear']);
         $this->assertArrayNotHasKey('ernestdefoe-marquee.deepl_key', $forum);
     }
+
+    private function forumAttributes(): array
+    {
+        return json_decode((string) $this->send($this->request('GET', '/api'))->getBody(), true)['data']['attributes'];
+    }
+
+    #[Test]
+    public function game_backgrounds_default_to_artwork_then_a_screenshot_and_no_colour(): void
+    {
+        $forum = $this->forumAttributes();
+        $this->assertSame('artwork_screenshot', $forum['marqueeGameBackdrop']);
+        $this->assertNull($forum['marqueeBackdropColor']);
+    }
+
+    #[Test]
+    public function the_background_choice_and_colour_reach_the_forum(): void
+    {
+        $this->setting(Settings::GAME_BACKDROP, 'none');
+        $this->setting(Settings::BACKDROP_COLOR, '#C0392B');
+
+        $forum = $this->forumAttributes();
+        $this->assertSame('none', $forum['marqueeGameBackdrop']);
+        $this->assertSame('#c0392b', $forum['marqueeBackdropColor']);
+    }
+
+    #[Test]
+    public function a_bad_background_choice_or_colour_never_reaches_the_page(): void
+    {
+        $this->setting(Settings::GAME_BACKDROP, 'sideways');
+        $this->setting(Settings::BACKDROP_COLOR, 'red; background: url(x)');
+
+        $forum = $this->forumAttributes();
+        $this->assertSame('artwork_screenshot', $forum['marqueeGameBackdrop']);
+        $this->assertNull($forum['marqueeBackdropColor']);
+    }
+
+    private function uploadBackdrop(int $as, int $discussion = 1)
+    {
+        $path = tempnam(sys_get_temp_dir(), 'bd');
+        $image = imagecreatetruecolor(800, 450);
+        imagejpeg($image, $path);
+
+        return $this->send($this->request('POST', "/api/marquee/discussions/$discussion/backdrop", ['authenticatedAs' => $as])
+            ->withUploadedFiles(['backdrop' => new \Laminas\Diactoros\UploadedFile($path, filesize($path), UPLOAD_ERR_OK, 'cover.jpg', 'image/jpeg')]));
+    }
+
+    private function setBackdrop(mixed $value, int $as = 1)
+    {
+        return $this->send($this->request('PATCH', '/api/discussions/1', [
+            'authenticatedAs' => $as,
+            'json' => ['data' => ['type' => 'discussions', 'id' => '1', 'attributes' => ['marqueeBackdrop' => $value]]],
+        ]));
+    }
+
+    #[Test]
+    public function only_someone_who_may_change_the_link_may_change_the_background(): void
+    {
+        $this->assertSame(403, $this->uploadBackdrop(2)->getStatusCode());
+        $this->assertSame(403, $this->setBackdrop('none', 2)->getStatusCode());
+        $this->assertNull(Discussion::find(1)->marquee_backdrop);
+    }
+
+    #[Test]
+    public function an_uploaded_background_is_stored_shown_and_deleted_when_replaced(): void
+    {
+        $response = $this->uploadBackdrop(1);
+        $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+
+        $path = Discussion::find(1)->marquee_backdrop;
+        $this->assertMatchesRegularExpression('#^marquee-backdrops/1-[a-z0-9]{10}\.webp$#', $path);
+        $disk = $this->app()->getContainer()->make(\Illuminate\Contracts\Filesystem\Factory::class)->disk('flarum-assets');
+        $this->assertTrue($disk->exists($path));
+        $this->assertStringEndsWith($path, $this->json($response)['data']['backdrop']);
+
+        $page = $this->json($this->send($this->request('GET', '/api/discussions/1')));
+        $this->assertStringEndsWith($path, $page['data']['attributes']['marqueeBackdrop']);
+
+        // Anything but the source's own or none is refused; none deletes the file.
+        $this->assertSame(422, $this->setBackdrop('https://example.com/x.jpg')->getStatusCode());
+        $this->assertSame(200, $this->setBackdrop('none')->getStatusCode());
+        $this->assertSame('none', Discussion::find(1)->marquee_backdrop);
+        $this->assertFalse($disk->exists($path));
+    }
+
+    #[Test]
+    public function a_file_that_is_not_an_image_is_refused(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'bd');
+        file_put_contents($path, '<?php echo 1;');
+
+        $response = $this->send($this->request('POST', '/api/marquee/discussions/1/backdrop', ['authenticatedAs' => 1])
+            ->withUploadedFiles(['backdrop' => new \Laminas\Diactoros\UploadedFile($path, filesize($path), UPLOAD_ERR_OK, 'x.jpg', 'image/jpeg')]));
+
+        $this->assertSame(422, $response->getStatusCode());
+        $this->assertNull(Discussion::find(1)->marquee_backdrop);
+    }
 }

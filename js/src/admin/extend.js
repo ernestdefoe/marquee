@@ -130,10 +130,25 @@ export default [
     )
     .setting(
       () => ({
-        setting: 'ernestdefoe-marquee.game_screenshot_backdrop',
-        type: 'switch',
-        label: t('game_screenshot_backdrop_label'),
-        help: t('game_screenshot_backdrop_help'),
+        setting: 'ernestdefoe-marquee.game_backdrop',
+        type: 'select',
+        label: t('game_backdrop_label'),
+        help: t('game_backdrop_help'),
+        options: {
+          artwork_screenshot: t('game_backdrop_options.artwork_screenshot'),
+          artwork: t('game_backdrop_options.artwork'),
+          none: t('game_backdrop_options.none'),
+        },
+        default: 'artwork_screenshot',
+      }),
+      81
+    )
+    .setting(
+      () => ({
+        setting: 'ernestdefoe-marquee.backdrop_color',
+        type: 'color-preview',
+        label: t('backdrop_color_label'),
+        help: t('backdrop_color_help'),
       }),
       81
     )

@@ -1,6 +1,7 @@
 <?php
 
 use Ernestdefoe\Marquee\Api;
+use Ernestdefoe\Marquee\Backdrops;
 use Ernestdefoe\Marquee\Console;
 use Ernestdefoe\Marquee\Formatter;
 use Ernestdefoe\Marquee\Media;
@@ -31,14 +32,16 @@ return [
     (new Extend\Routes('api'))
         ->get('/marquee/search', 'marquee.search', Api\SearchController::class)
         ->post('/marquee/media', 'marquee.lookup', Api\LookupController::class)
-        ->get('/marquee/media/{id:\d+}/seasons/{number:\d+}', 'marquee.season', Api\SeasonController::class),
+        ->get('/marquee/media/{id:\d+}/seasons/{number:\d+}', 'marquee.season', Api\SeasonController::class)
+        ->post('/marquee/discussions/{id:\d+}/backdrop', 'marquee.backdrop', Api\BackdropController::class),
 
     (new Extend\Model(Discussion::class))
         ->belongsTo('marqueeMedia', Media::class, 'marquee_media_id')
         ->cast('marquee_media_id', 'integer')
         ->cast('marquee_season', 'integer')
         ->cast('marquee_episode', 'integer')
-        ->cast('marquee_related', 'array'),
+        ->cast('marquee_related', 'array')
+        ->cast('marquee_backdrop', 'string'),
 
     new Extend\ApiResource(Api\MediaResource::class),
 
@@ -75,6 +78,7 @@ return [
     (new Extend\Event())
         ->listen(Deleted::class, function (Deleted $event): void {
             resolve(MediaRepository::class)->prune([$event->discussion->marquee_media_id, ...(array) ($event->discussion->marquee_related ?? [])]);
+            resolve(Backdrops::class)->delete($event->discussion->marquee_backdrop);
         }),
 
     (new Extend\Settings())
@@ -84,6 +88,7 @@ return [
         ->default(Settings::SHOW_SOURCE_LINK, true)
         ->default(Settings::LIST_META, 'kind_year')
         ->default(Settings::TITLE_YEAR, true)
-        ->default(Settings::GAME_SCREENSHOT_BACKDROP, true)
+        ->default(Settings::GAME_BACKDROP, 'artwork_screenshot')
+        ->default(Settings::BACKDROP_COLOR, '')
         ->default(Settings::TAGS, '{}'),
 ];

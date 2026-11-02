@@ -2,6 +2,7 @@
 
 namespace Ernestdefoe\Marquee\Api;
 
+use Ernestdefoe\Marquee\Backdrops;
 use Ernestdefoe\Marquee\Media;
 use Ernestdefoe\Marquee\MediaRepository;
 use Ernestdefoe\Marquee\Season;
@@ -20,7 +21,8 @@ class DiscussionFields
     public function __construct(
         private Sources $sources,
         private MediaRepository $media,
-        private TranslatorInterface $translator
+        private TranslatorInterface $translator,
+        private Backdrops $backdrops
     ) {
     }
 
@@ -55,6 +57,24 @@ class DiscussionFields
                 ->includable()
                 ->withLinkage(fn (Context $context) => $context->showing(DiscussionResource::class) || $context->updating(DiscussionResource::class))
                 ->get(fn (Discussion $d) => self::related($d)),
+
+            // The card's own background: null (the source's), "none", or an
+            // uploaded image's address. Uploading goes through BackdropController;
+            // this only switches back to the source's or to none.
+            Schema\Str::make('marqueeBackdrop')
+                ->nullable()
+                ->visible(fn (Discussion $d, Context $context) => $context->showing(DiscussionResource::class) || $context->updating(DiscussionResource::class))
+                ->get(fn (Discussion $d) => $this->backdrops->value($d->marquee_backdrop))
+                ->writable(fn (Discussion $d, Context $context) => ! $context->creating() && self::canLink($context->getActor(), $d))
+                ->set(function (Discussion $d, mixed $value) {
+                    if ($value !== null && $value !== Backdrops::NONE) {
+                        $this->fail('invalid');
+                    }
+
+                    $before = $d->marquee_backdrop;
+                    $d->marquee_backdrop = $value;
+                    $d->afterSave(fn () => $before !== $value ? $this->backdrops->delete($before) : null);
+                }),
 
             Schema\Boolean::make('canMarqueeLink')
                 ->get(fn (Discussion $d, Context $context) => self::canLink($context->getActor(), $d)),
@@ -100,6 +120,11 @@ class DiscussionFields
             $discussion->marquee_season = null;
             $discussion->marquee_episode = null;
             $discussion->marquee_related = null;
+
+            // No card, so no card background either.
+            $backdrop = $discussion->marquee_backdrop;
+            $discussion->marquee_backdrop = null;
+            $discussion->afterSave(fn () => $this->backdrops->delete($backdrop));
 
             return;
         }

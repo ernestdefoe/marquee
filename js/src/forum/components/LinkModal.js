@@ -2,6 +2,7 @@ import app from 'flarum/forum/app';
 import FormModal from 'flarum/common/components/FormModal';
 import Button from 'flarum/common/components/Button';
 import Switch from 'flarum/common/components/Switch';
+import classList from 'flarum/common/utils/classList';
 import TitlePicker from './TitlePicker';
 import ScopePicker from './ScopePicker';
 import { t, text, img, sourceName, kindForTags, linkFor, pickFromMedia, titleFor } from '../util';
@@ -33,6 +34,10 @@ export default class LinkModal extends FormModal {
     this.query = '';
     this.rename = true;
     this.saving = false;
+
+    // null (the source's), 'none', or an uploaded image's address.
+    this.backdrop = discussion.attribute('marqueeBackdrop') ?? null;
+    this.uploading = false;
   }
 
   /** The page knows the linked episode's number; its name comes from the season. */
@@ -110,6 +115,8 @@ export default class LinkModal extends FormModal {
             </div>
           ) : null}
 
+          {link && this.current && link.externalId === pickFromMedia(this.current.media).externalId ? this.backdropField() : null}
+
           {link ? (
             <div className="Form-group">
               <Switch state={this.rename} onchange={(value) => (this.rename = value)}>
@@ -126,6 +133,79 @@ export default class LinkModal extends FormModal {
         </div>
       </div>
     );
+  }
+
+  /** The card's background: the source's, none, or an uploaded image. */
+  backdropField() {
+    const own = this.backdrop && this.backdrop !== 'none';
+    const choice = (value, label) => (
+      <Button
+        className={classList('Button', { active: value === 'own' ? own : this.backdrop === value })}
+        aria-pressed={String(value === 'own' ? own : this.backdrop === value)}
+        onclick={() => (value === 'own' ? this.element.querySelector('.MarqueeLinkModal-file').click() : (this.backdrop = value))}
+      >
+        {label}
+      </Button>
+    );
+
+    return (
+      <div className="Form-group MarqueeLinkModal-backdrop">
+        <label>{t('link.backdrop_label')}</label>
+        <div className="ButtonGroup">
+          {choice(null, t('link.backdrop_default'))}
+          {choice('none', t('link.backdrop_none'))}
+          {choice('own', t('link.backdrop_own'))}
+        </div>
+        {own ? <img className="MarqueeLinkModal-backdropPreview" src={this.backdrop} alt="" /> : null}
+        <input
+          className="MarqueeLinkModal-file"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          hidden
+          onchange={(e) => this.upload(e.target)}
+        />
+        <Button
+          className="Button"
+          icon="fas fa-upload"
+          loading={this.uploading}
+          onclick={() => this.element.querySelector('.MarqueeLinkModal-file').click()}
+        >
+          {own ? t('link.backdrop_replace') : t('link.backdrop_upload')}
+        </Button>
+        <p className="helpText">{t('link.backdrop_help')}</p>
+      </div>
+    );
+  }
+
+  upload(input) {
+    const file = input.files && input.files[0];
+    input.value = '';
+    if (!file) return;
+
+    const body = new FormData();
+    body.append('backdrop', file);
+    this.uploading = true;
+    m.redraw();
+
+    app
+      .request({
+        method: 'POST',
+        url: `${app.forum.attribute('apiUrl')}/marquee/discussions/${this.attrs.discussion.id()}/backdrop`,
+        serialize: (raw) => raw,
+        body,
+      })
+      .then(
+        (response) => {
+          this.backdrop = response.data.backdrop;
+          this.attrs.discussion.pushAttributes({ marqueeBackdrop: this.backdrop });
+          app.alerts.show({ type: 'success' }, text('link.backdrop_uploaded'));
+        },
+        () => {}
+      )
+      .finally(() => {
+        this.uploading = false;
+        m.redraw();
+      });
   }
 
   /** Related titles: the other games (films, seasons…) of a series, in the card's order. */
@@ -178,6 +258,10 @@ export default class LinkModal extends FormModal {
       marquee: link ? { kind: link.kind, id: link.externalId, season: link.season || null, episode: link.episode ? link.episode.n : null } : null,
     };
     if (link) attributes.marqueeRelated = this.related.map((r) => ({ kind: r.kind, id: r.externalId }));
+    // An upload is already saved; only switching back to the source's, or to none, is sent.
+    if (link && (this.backdrop === null || this.backdrop === 'none') && this.backdrop !== (discussion.attribute('marqueeBackdrop') ?? null)) {
+      attributes.marqueeBackdrop = this.backdrop;
+    }
 
     // Only rename once the episode's name is known (see oninit).
     if (link && this.rename && (!link.episode || link.episode.title)) {

@@ -27,8 +27,14 @@ ernestdefoe-marquee:
     show_scores_help: "Notes des utilisateurs TMDB, notes de la critique et des membres IGDB et notes Open Library, sur la fiche, les saisons et les épisodes."
     show_source_link_label: "Afficher le bouton « Voir sur TMDB / IGDB… »"
     show_source_link_help: "Le bouton sous la fiche qui ouvre le titre sur sa source. La petite ligne d'attribution (« Données de jeu d'IGDB.com », la mention de TMDB) reste toujours affichée : TMDB exige sa mention et les conditions d'IGDB demandent de le citer."
-    game_screenshot_backdrop_label: Utiliser une capture d'écran comme arrière-plan quand un jeu n'a pas d'illustration
-    game_screenshot_backdrop_help: "IGDB a une illustration large pour la plupart des jeux. Pour les autres, la fiche utilise la plus grande capture d'écran du jeu (jamais une trop petite pour rester nette). Désactivez cette option pour n'afficher aucune image d'arrière-plan pour ces jeux."
+    game_backdrop_label: Arrière-plan des fiches de jeux
+    game_backdrop_help: "IGDB a une illustration large pour la plupart des jeux. Pour les autres, la fiche peut utiliser la plus grande capture d'écran du jeu (jamais une trop petite pour rester nette). Toute personne qui peut changer le titre lié d'une discussion peut aussi choisir son arrière-plan, ou envoyer le sien."
+    game_backdrop_options:
+      artwork_screenshot: L'illustration, ou une capture d'écran s'il n'y en a pas
+      artwork: L'illustration seulement
+      none: Aucune image d'arrière-plan
+    backdrop_color_label: Couleur des fiches sans image d'arrière-plan
+    backdrop_color_help: Utilisée par toute fiche sans image d'arrière-plan. Laissez vide pour utiliser la couleur de l'étiquette de la discussion, comme l'en-tête de discussion de Flarum.
     tags_label: Quelles étiquettes utilisent quelle source
     tags_help: "Quand quelqu'un ouvre une discussion sous l'une de ces étiquettes, le champ du titre cherche dans cette source et la discussion affiche la fiche du titre dans son en-tête. Les autres étiquettes gardent l'éditeur habituel."
     source_none: Discussion normale
@@ -172,6 +178,15 @@ ernestdefoe-marquee:
       discuss_episode: Discuter de cet épisode
 
     link:
+      backdrop_label: Arrière-plan
+      backdrop_default: Par défaut
+      backdrop_none: Aucun
+      backdrop_own: Votre image
+      backdrop_upload: Envoyer une image
+      backdrop_replace: Remplacer l'image
+      backdrop_help: "JPG, PNG ou WebP, jusqu'à 8 Mo. 1920 × 1080 ou plus donne le meilleur résultat. L'image est utilisée dès qu'elle est envoyée."
+      backdrop_uploaded: L'arrière-plan a été envoyé.
+      edit_card: Modifier cette fiche
       related_label: Titres liés
       related_help: La suite d’une série, par exemple les autres jeux d’une trilogie. Ils s’affichent en ligne sur la carte, et un clic sur l’un d’eux affiche sa carte à la place.
       related_placeholder: Ajouter un titre lié…
