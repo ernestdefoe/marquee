@@ -2,6 +2,7 @@ import app from 'flarum/forum/app';
 import FormModal from 'flarum/common/components/FormModal';
 import Button from 'flarum/common/components/Button';
 import Switch from 'flarum/common/components/Switch';
+import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import classList from 'flarum/common/utils/classList';
 import TitlePicker from './TitlePicker';
 import ScopePicker from './ScopePicker';
@@ -17,6 +18,35 @@ export default class LinkModal extends FormModal {
   oninit(vnode) {
     super.oninit(vnode);
 
+    this.query = '';
+    this.rename = true;
+    this.saving = false;
+    this.uploading = false;
+    this.deleting = false;
+
+    // The discussion list doesn't carry the related titles or backgrounds, so
+    // opened from there it loads them first: saving without them would wipe
+    // the related titles, and an uploaded image wouldn't show.
+    const discussion = this.attrs.discussion;
+    if (discussion.attribute('marqueeBackdrops') === undefined) {
+      this.loadingFull = true;
+      app.store
+        .find('discussions', discussion.id(), { include: 'marqueeMedia,marqueeRelatedMedia' })
+        .then(
+          () => this.setup(),
+          () => this.hide()
+        )
+        .finally(() => {
+          this.loadingFull = false;
+          m.redraw();
+        });
+    } else {
+      this.setup();
+    }
+  }
+
+  /** The form's fields, from the discussion as it is now. */
+  setup() {
     const discussion = this.attrs.discussion;
     const current = linkFor(discussion);
 
@@ -31,17 +61,11 @@ export default class LinkModal extends FormModal {
     this.related = (discussion.marqueeRelatedMedia() || []).filter(Boolean).map(pickFromMedia);
     this.relatedQuery = '';
 
-    this.query = '';
-    this.rename = true;
-    this.saving = false;
-
     // Each title's background: 'none' or an uploaded image's address; a title
     // not in it has the source's. Opened from the card: the title it shows.
     this.savedBackdrops = discussion.attribute('marqueeBackdrops') || {};
     this.backdrops = { ...this.savedBackdrops };
     this.backdropFor = (this.attrs.media || current?.media)?.id();
-    this.uploading = false;
-    this.deleting = false;
   }
 
   /** The page knows the linked episode's number; its name comes from the season. */
@@ -71,6 +95,14 @@ export default class LinkModal extends FormModal {
   }
 
   content() {
+    if (this.loadingFull) {
+      return (
+        <div className="Modal-body">
+          <LoadingIndicator display="block" />
+        </div>
+      );
+    }
+
     const link = this.link;
 
     return (

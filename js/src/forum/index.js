@@ -4,6 +4,7 @@ import Model from 'flarum/common/Model';
 import Discussion from 'flarum/common/models/Discussion';
 import DiscussionHero from 'flarum/forum/components/DiscussionHero';
 import DiscussionListItem from 'flarum/forum/components/DiscussionListItem';
+import DiscussionListState from 'flarum/forum/states/DiscussionListState';
 import Link from 'flarum/common/components/Link';
 import Button from 'flarum/common/components/Button';
 import DiscussionControls from 'flarum/forum/utils/DiscussionControls';
@@ -116,6 +117,13 @@ app.initializers.add('ernestdefoe-marquee', () => {
   });
   extend('flarum/common/components/TextEditor', 'buildEditorParams', function (params) {
     params.inputListeners.push(() => this.marqueeSuggest && this.marqueeSuggest());
+  });
+
+  // The list's own requests (Load more, a tag page opened in the forum) name
+  // their includes, so the server's default include doesn't apply to them.
+  extend(DiscussionListState.prototype, 'requestParams', function (params) {
+    if (typeof params.include === 'string') params.include = [params.include];
+    params.include?.push('marqueeMedia');
   });
 
   // Change or remove the link on a posted discussion: "Change the linked title of
