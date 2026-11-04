@@ -47,6 +47,7 @@ export default class TitlePicker extends Component {
           oninput={(e) => this.oninput(e.target.value)}
           onkeydown={(e) => this.onkeydown(e)}
           onfocus={() => this.results.length && (this.open = true)}
+          onblur={() => this.refit()}
         />
         {open ? this.dropdown(kind) : null}
       </Tag>
@@ -68,11 +69,23 @@ export default class TitlePicker extends Component {
       }
     };
     document.addEventListener('pointerdown', this.outside);
+
+    // The keyboard opening or closing changes the room the list has.
+    // iOS reports the new size before the keyboard has finished moving, so
+    // fit again once it has.
+    this.refit = () => {
+      this.fit();
+      clearTimeout(this.refitTimer);
+      this.refitTimer = setTimeout(() => this.element && this.fit(), 350);
+    };
+    window.visualViewport?.addEventListener('resize', this.refit);
   }
 
   onremove(vnode) {
     super.onremove(vnode);
     document.removeEventListener('pointerdown', this.outside);
+    window.visualViewport?.removeEventListener('resize', this.refit);
+    clearTimeout(this.refitTimer);
   }
 
   onupdate(vnode) {
@@ -86,19 +99,42 @@ export default class TitlePicker extends Component {
     }
     this.lastKind = kind;
 
-    // The composer clips its content, so fit the list to the room under the title.
-    const list = this.element.querySelector('.Marquee-results');
-    const composer = this.element.closest('.Composer');
-    if (list && composer) {
-      const room = composer.getBoundingClientRect().bottom - list.getBoundingClientRect().top - 8;
-      list.style.maxHeight = `${Math.max(160, Math.min(420, room))}px`;
-    }
+    const list = this.fit();
 
     // Arrow keys keep the highlighted result in view inside the list.
     if (list && this.scrollActive) {
       this.scrollActive = false;
       list.querySelector('.Marquee-result.active')?.scrollIntoView({ block: 'nearest' });
     }
+  }
+
+  /**
+   * Fit the list to the room under the field: the composer clips its content,
+   * and on a phone the keyboard covers the bottom of the screen. A list that
+   * ran on under the keyboard couldn't be scrolled, and iOS moved the whole
+   * window up to make room for it.
+   */
+  fit() {
+    const list = this.element.querySelector('.Marquee-results');
+    if (!list) return null;
+
+    const bottoms = [];
+    const composer = this.element.closest('.Composer');
+    if (composer) bottoms.push(composer.getBoundingClientRect().bottom);
+    const viewport = window.visualViewport;
+    // The keyboard is up: the field has focus and a good part of the screen is gone
+    // (Safari's own toolbar takes a little even without it).
+    const typing = document.activeElement === this.element.querySelector('input');
+    if (viewport && typing && viewport.height < window.innerHeight * 0.75) bottoms.push(viewport.offsetTop + viewport.height);
+
+    if (bottoms.length) {
+      const room = Math.min(...bottoms) - list.getBoundingClientRect().top - 8;
+      list.style.maxHeight = `${Math.max(160, Math.min(420, room))}px`;
+    } else {
+      list.style.maxHeight = '';
+    }
+
+    return list;
   }
 
   dropdown(kind) {
