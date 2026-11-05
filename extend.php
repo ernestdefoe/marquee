@@ -92,5 +92,6 @@ return [
         ->default(Settings::BACKDROP_COLOR, '')
         ->default(Settings::BACKDROP_TAG_COLOR, false)
         ->default(Settings::DOCK, true)
+        ->default(Settings::DOCK_ICON, '')
         ->default(Settings::TAGS, '{}'),
 ];

@@ -129,6 +129,7 @@ export default class TitleDock extends Component {
 
     const { main } = titles;
     const label = text('dock.open', { title: main.media.title() });
+    const icon = app.forum.attribute('marqueeDockIcon');
 
     return (
       <div className={classList('MarqueeDock', { 'is-open': this.open })}>
@@ -142,7 +143,11 @@ export default class TitleDock extends Component {
           title={label}
           onclick={() => (this.open = !this.open)}
         >
-          {main.media.poster() ? <img src={img(main.media.poster(), 'w92')} alt="" /> : <Icon name={ICONS[main.media.kind()] || 'fas fa-film'} />}
+          {icon || !main.media.poster() ? (
+            <Icon name={icon || ICONS[main.media.kind()] || 'fas fa-film'} />
+          ) : (
+            <img src={img(main.media.poster(), 'w92')} alt="" />
+          )}
           {this.open ? <Icon name="fas fa-xmark" className="MarqueeDock-close" /> : null}
         </button>
       </div>

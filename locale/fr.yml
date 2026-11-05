@@ -16,6 +16,8 @@ ernestdefoe-marquee:
     language_placeholder: "La langue du forum"
     dock_label: Afficher un menu des titres une fois la carte dépassée
     dock_help: "Un bouton rond dans le coin inférieur d'une discussion avec une carte. Il ouvre un menu pour chaque titre de la carte : retour à ses détails, et ce que d'autres extensions y ajoutent, comme la collection, la liste d'envies et les propriétaires de Curio."
+    dock_icon_label: Icône du bouton du menu
+    dock_icon_help: "Une icône Font Awesome à la place de l'affiche sur le bouton, comme fas fa-film ou fas fa-bars (fontawesome.com liste les noms). Laissez vide pour afficher l'affiche."
     list_posters_label: Afficher les affiches dans la liste des discussions
     list_posters_help: "Une petite affiche à côté de chaque discussion liée. Désactivez-la si une autre extension, comme FoF Discussion Thumbnail, affiche déjà des miniatures."
     title_year_label: Ajouter l'année aux titres

@@ -30,6 +30,8 @@ final class Settings
     public const TITLE_YEAR = 'ernestdefoe-marquee.title_year';
     /** A corner button with the card's actions once the card has scrolled away. */
     public const DOCK = 'ernestdefoe-marquee.dock';
+    /** Font Awesome classes for that button, such as "fas fa-film"; empty = the cover art. */
+    public const DOCK_ICON = 'ernestdefoe-marquee.dock_icon';
     /** JSON object: tag id => kind (movie | tv | game). */
     public const TAGS = 'ernestdefoe-marquee.tags';
 }

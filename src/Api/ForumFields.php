@@ -33,6 +33,13 @@ class ForumFields
                 ->get(fn () => Backdrops::color((string) $this->settings->get(Settings::BACKDROP_COLOR))),
             Schema\Boolean::make('marqueeBackdropTagColor')->get(fn () => (bool) $this->settings->get(Settings::BACKDROP_TAG_COLOR)),
             Schema\Boolean::make('marqueeDock')->get(fn () => (bool) $this->settings->get(Settings::DOCK)),
+            Schema\Str::make('marqueeDockIcon')
+                ->nullable()
+                ->get(function () {
+                    $icon = trim((string) $this->settings->get(Settings::DOCK_ICON));
+
+                    return preg_match('/^[a-z0-9 -]{1,80}$/i', $icon) ? $icon : null;
+                }),
             Schema\Boolean::make('marqueeTitleYear')->get(fn () => (bool) $this->settings->get(Settings::TITLE_YEAR)),
             Schema\Str::make('marqueeListMeta')->get(function () {
                 $value = (string) $this->settings->get(Settings::LIST_META);

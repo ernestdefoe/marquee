@@ -101,6 +101,16 @@ export default [
     )
     .setting(
       () => ({
+        setting: 'ernestdefoe-marquee.dock_icon',
+        type: 'text',
+        label: t('dock_icon_label'),
+        help: t('dock_icon_help'),
+        placeholder: 'fas fa-film',
+      }),
+      85
+    )
+    .setting(
+      () => ({
         setting: 'ernestdefoe-marquee.title_year',
         type: 'switch',
         label: t('title_year_label'),
