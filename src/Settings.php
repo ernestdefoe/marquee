@@ -28,6 +28,8 @@ final class Settings
     public const BACKDROP_TAG_COLOR = 'ernestdefoe-marquee.backdrop_tag_color';
     /** "Title (2020)" in discussion titles and on the card; off = the title alone. */
     public const TITLE_YEAR = 'ernestdefoe-marquee.title_year';
+    /** A corner button with the card's actions once the card has scrolled away. */
+    public const DOCK = 'ernestdefoe-marquee.dock';
     /** JSON object: tag id => kind (movie | tv | game). */
     public const TAGS = 'ernestdefoe-marquee.tags';
 }

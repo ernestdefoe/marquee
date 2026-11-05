@@ -12,6 +12,7 @@ import LinkModal from './components/LinkModal';
 import Media from './models';
 import MediaHero from './components/MediaHero';
 import TitlePicker from './components/TitlePicker';
+import TitleDock from './components/TitleDock';
 import ScopePicker from './components/ScopePicker';
 import { t, img, pad, sourceName, kindForTags, linkFor, titleFor } from './util';
 import { applyPrefill } from './utils/startDiscussion';
@@ -180,6 +181,32 @@ app.initializers.add('ernestdefoe-marquee', () => {
         onswitch={(media) => shownTitle.set(discussion.id(), media.id())}
       />
     );
+  });
+
+  // Once the card has scrolled away, a corner button brings its actions back.
+  // It lives on <body>, so a theme that transforms the page can't trap it.
+  extend('flarum/forum/components/DiscussionPage', 'oncreate', function () {
+    if (app.forum.attribute('marqueeDock') === false) return;
+    const page = this;
+    this.marqueeDock = document.body.appendChild(document.createElement('div'));
+    m.mount(this.marqueeDock, {
+      view: () => (
+        <TitleDock
+          page={page}
+          show={(media) => {
+            const main = linkFor(page.discussion);
+            if (main && media === main.media) shownTitle.delete(page.discussion.id());
+            else shownTitle.set(page.discussion.id(), media.id());
+          }}
+        />
+      ),
+    });
+  });
+
+  extend('flarum/forum/components/DiscussionPage', 'onremove', function () {
+    if (!this.marqueeDock) return;
+    m.mount(this.marqueeDock, null);
+    this.marqueeDock.remove();
   });
 
   extend(DiscussionListItem.prototype, 'authorItems', function (items) {

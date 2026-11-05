@@ -1538,3 +1538,148 @@
   border-radius: var(--border-radius);
   margin-bottom: 10px;
 }
+
+// ---- Title menu (once the card has scrolled away) ---------------------------
+.MarqueeDock {
+  position: fixed;
+  right: 16px;
+  bottom: calc(16px + var(--marquee-dock-lift, 0px) + env(safe-area-inset-bottom, 0px));
+  z-index: 1040;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+
+  &.is-hidden {
+    display: none;
+  }
+}
+
+.MarqueeDock-button {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 2px solid var(--body-bg);
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: pointer;
+  color: var(--control-color);
+  background: var(--control-bg);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  font-size: 20px;
+  animation: MarqueeDock-in 0.18s ease-out;
+
+  img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+  }
+}
+
+.MarqueeDock-close {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+@keyframes MarqueeDock-in {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+}
+
+.MarqueeDock-menu.Dropdown-menu {
+  position: static;
+  display: block;
+  width: ~"min(320px, calc(100vw - 32px))";
+  max-height: ~"calc(100vh - 140px)";
+  max-height: ~"calc(100dvh - 140px - var(--marquee-dock-lift, 0px))";
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0;
+  padding: 6px 0;
+  color: var(--text-color);
+  background: var(--body-bg);
+
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li > .Button,
+  li > a.Button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 15px;
+    border-radius: 0;
+    text-align: left;
+    white-space: normal;
+    color: var(--text-color);
+    background: transparent;
+    font-weight: normal;
+
+    &:hover,
+    &:focus-visible {
+      background: var(--control-bg);
+    }
+
+    .Button-icon {
+      width: 16px;
+      margin: 0;
+      text-align: center;
+      color: var(--muted-color);
+    }
+  }
+}
+
+.MarqueeDock-title + .MarqueeDock-title {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--control-bg);
+}
+
+.MarqueeDock-menu h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 8px 15px 6px;
+  color: var(--text-color);
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1.3;
+
+  img {
+    flex: none;
+    width: 28px;
+    height: 40px;
+    border-radius: 3px;
+    object-fit: cover;
+  }
+
+  span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  small {
+    margin-left: 6px;
+    color: var(--muted-color);
+    font-weight: normal;
+  }
+}

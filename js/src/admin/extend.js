@@ -92,6 +92,15 @@ export default [
     )
     .setting(
       () => ({
+        setting: 'ernestdefoe-marquee.dock',
+        type: 'switch',
+        label: t('dock_label'),
+        help: t('dock_help'),
+      }),
+      85
+    )
+    .setting(
+      () => ({
         setting: 'ernestdefoe-marquee.title_year',
         type: 'switch',
         label: t('title_year_label'),
