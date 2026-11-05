@@ -1,5 +1,6 @@
 import app from 'flarum/forum/app';
 import Component from 'flarum/common/Component';
+import Button from 'flarum/common/components/Button';
 import Icon from 'flarum/common/components/Icon';
 import classList from 'flarum/common/utils/classList';
 import extractText from 'flarum/common/utils/extractText';
@@ -15,6 +16,16 @@ const BELOW = [
   '.Quickdraw-fab, .MobileTab-bar, .Composer.minimized, .AlertManager .Alert, #bespoke-totop, .Bespoke-toTop',
   '.pl-heads > *, .LobbyShell-dock > *, .ConcourseShell-tabbar, .CookieBanner, .cc-window, #onetrust-banner-sdk',
 ].join(', ');
+
+/** The bottom of the bar fixed at the top. On phones #header is the drawer; the bar is #app-navigation. */
+function topBar() {
+  let bottom = 0;
+  document.querySelectorAll('#header, #app-navigation').forEach((el) => {
+    const r = el.getBoundingClientRect();
+    if (r.top <= 1 && r.bottom > 0 && r.height < 160) bottom = Math.max(bottom, r.bottom);
+  });
+  return bottom;
+}
 
 const ICONS = { movie: 'fas fa-film', tv: 'fas fa-tv', game: 'fas fa-gamepad', music: 'fas fa-compact-disc', book: 'fas fa-book' };
 
@@ -39,7 +50,8 @@ export default class TitleDock extends Component {
       frame = requestAnimationFrame(() => {
         frame = 0;
         const hero = document.querySelector('.MarqueeHero');
-        const away = !!hero && hero.getBoundingClientRect().bottom < 0;
+        // Gone once it has slid under the bar at the top.
+        const away = !!hero && hero.getBoundingClientRect().bottom < topBar();
         if (away !== this.away) {
           this.away = away;
           if (!away) this.open = false;
@@ -91,6 +103,11 @@ export default class TitleDock extends Component {
       if (r.width && r.height && r.top > height / 2 && r.right > window.innerWidth - 80) lift = Math.max(lift, height - r.top);
     });
     this.element.style.setProperty('--marquee-dock-lift', `${lift}px`);
+
+    // The menu opens upward, into the room between the top bar and the button.
+    const header = topBar();
+    const button = this.element.querySelector('.MarqueeDock-button');
+    if (button) this.element.style.setProperty('--marquee-dock-room', `${Math.max(160, button.getBoundingClientRect().top - header - 20)}px`);
   }
 
   titles() {
@@ -172,9 +189,13 @@ export default class TitleDock extends Component {
     const items = card.actionItems();
     OWN.forEach((key) => items.has(key) && items.remove(key));
 
-    return items.toArray().map((vnode) => {
-      const attrs = vnode && vnode.attrs;
-      if (!attrs || (vnode.children && vnode.children.length)) return vnode;
+    // Plain buttons and links only: a menu row can't hold a dropdown.
+    const plain = (vnode) =>
+      vnode && (typeof vnode.tag === 'string' ? ['a', 'button'].includes(vnode.tag) : vnode.tag === Button || vnode.tag?.prototype instanceof Button);
+
+    return items.toArray().filter(plain).map((vnode) => {
+      const attrs = vnode.attrs || {};
+      if (vnode.children && vnode.children.length) return vnode;
       const label = attrs.title || attrs['aria-label'];
       return label ? m(vnode.tag, { ...attrs, className: (attrs.className || '').replace('Button--icon', '') }, extractText(label)) : vnode;
     });
