@@ -193,12 +193,15 @@ export default class TitleDock extends Component {
     const plain = (vnode) =>
       vnode && (typeof vnode.tag === 'string' ? ['a', 'button'].includes(vnode.tag) : vnode.tag === Button || vnode.tag?.prototype instanceof Button);
 
-    return items.toArray().filter(plain).map((vnode) => {
-      const attrs = vnode.attrs || {};
-      if (vnode.children && vnode.children.length) return vnode;
-      const label = attrs.title || attrs['aria-label'];
-      return label ? m(vnode.tag, { ...attrs, className: (attrs.className || '').replace('Button--icon', '') }, extractText(label)) : vnode;
-    });
+    return items
+      .toArray()
+      .filter(plain)
+      .map((vnode) => {
+        const attrs = vnode.attrs || {};
+        if (vnode.children && vnode.children.length) return vnode;
+        const label = attrs.title || attrs['aria-label'];
+        return label ? m(vnode.tag, { ...attrs, className: (attrs.className || '').replace('Button--icon', '') }, extractText(label)) : vnode;
+      });
   }
 
   /** Back to the card, showing this title. */
