@@ -14,6 +14,8 @@ ernestdefoe-marquee:
     language_label: Langue des données
     language_help: "La langue des titres, résumés et genres des films et séries, sous forme de code comme fr, fr-FR ou pt-BR. Laissez vide pour suivre la langue par défaut du forum. Les données de jeux d'IGDB sont en anglais (seuls des noms japonais et coréens existent) : les descriptions de jeux viennent de Wikipédia dans cette langue quand il a le jeu, et le reste est traduit avec une clé DeepL ; les albums gardent les titres des artistes, et les titres, couvertures et éditeurs des livres la suivent quand Open Library a une édition dans cette langue (les résumés de livres sont surtout en anglais). Les titres déjà liés changent de langue à leur prochaine mise à jour."
     language_placeholder: "La langue du forum"
+    dock_label: Afficher un menu des titres une fois la carte dépassée
+    dock_help: "Un bouton rond dans le coin inférieur d'une discussion avec une carte. Il ouvre un menu pour chaque titre de la carte : retour à ses détails, et ce que d'autres extensions y ajoutent, comme la collection, la liste d'envies et les propriétaires de Curio."
     list_posters_label: Afficher les affiches dans la liste des discussions
     list_posters_help: "Une petite affiche à côté de chaque discussion liée. Désactivez-la si une autre extension, comme FoF Discussion Thumbnail, affiche déjà des miniatures."
     title_year_label: Ajouter l'année aux titres
@@ -131,6 +133,10 @@ ernestdefoe-marquee:
       author: Auteur
       original_title: Titre original
       isbn: ISBN
+
+    dock:
+      open: "{title} : détails et plus"
+      details: Voir les détails
 
     hero:
       series: Titres de cette discussion
