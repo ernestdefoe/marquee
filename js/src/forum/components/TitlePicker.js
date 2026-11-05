@@ -79,6 +79,20 @@ export default class TitlePicker extends Component {
       this.refitTimer = setTimeout(() => this.element && this.fit(), 350);
     };
     window.visualViewport?.addEventListener('resize', this.refit);
+
+    /*
+     * On iOS, core locks the page behind a window by cancelling any drag the
+     * window itself can't scroll. A short window (nothing linked yet) never
+     * scrolls, so the list inside it couldn't either: keep its drags to itself.
+     */
+    this.element.addEventListener(
+      'touchmove',
+      (e) => {
+        const list = e.target.closest('.Marquee-results');
+        if (list && list.scrollHeight > list.clientHeight) e.stopPropagation();
+      },
+      { passive: true }
+    );
   }
 
   onremove(vnode) {
