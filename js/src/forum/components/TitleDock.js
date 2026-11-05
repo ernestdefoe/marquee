@@ -144,7 +144,9 @@ export default class TitleDock extends Component {
           onclick={() => (this.open = !this.open)}
         >
           {icon || !main.media.poster() ? (
-            <Icon name={icon || ICONS[main.media.kind()] || 'fas fa-film'} />
+            this.open ? null : (
+              <Icon name={icon || ICONS[main.media.kind()] || 'fas fa-film'} />
+            )
           ) : (
             <img src={img(main.media.poster(), 'w92')} alt="" />
           )}
