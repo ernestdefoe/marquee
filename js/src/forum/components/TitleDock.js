@@ -102,6 +102,9 @@ export default class TitleDock extends Component {
       const r = el.getBoundingClientRect();
       if (r.width && r.height && r.top > height / 2 && r.right > window.innerWidth - 80) lift = Math.max(lift, height - r.top);
     });
+    // acpl/mobile-tab slides away while scrolling down: go by its class, not where it is mid-slide.
+    const tab = document.querySelector('.MobileTab:not(.MobileTab--hidden)');
+    if (tab) lift = Math.max(lift, tab.offsetHeight);
     this.element.style.setProperty('--marquee-dock-lift', `${lift}px`);
 
     // The menu opens upward, into the room between the top bar and the button.
