@@ -75,6 +75,9 @@ export default class TitleDock extends Component {
 
     window.addEventListener('scroll', this.onMove, { passive: true });
     window.addEventListener('resize', this.onMove);
+    // Quickdraw and tab bars slide into place: measure them again once they have.
+    this.onSlid = (e) => e.target instanceof Element && e.target.matches(`${BELOW}, .Quickdraw, .MobileTab`) && this.onMove();
+    document.addEventListener('transitionend', this.onSlid);
     document.addEventListener('keydown', this.onKey);
     document.addEventListener('pointerdown', this.outside);
     this.onMove();
@@ -89,6 +92,7 @@ export default class TitleDock extends Component {
     super.onremove(vnode);
     window.removeEventListener('scroll', this.onMove);
     window.removeEventListener('resize', this.onMove);
+    document.removeEventListener('transitionend', this.onSlid);
     document.removeEventListener('keydown', this.onKey);
     document.removeEventListener('pointerdown', this.outside);
   }
