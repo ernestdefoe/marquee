@@ -218,6 +218,12 @@ export default class TitleDock extends Component {
   details(media) {
     this.open = false;
     this.attrs.show(media);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Deep in a long discussion, scrolling up loaded every earlier page on the
+    // way. Go to the first post as the scrubber does: core loads the posts near
+    // it and, with post 1 at the start of the stream, scrolls to the very top.
+    const stream = this.attrs.page.stream;
+    if (stream) stream.goToFirst();
+    else window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 }
