@@ -497,9 +497,12 @@
 }
 
 // ---- Discussion list -------------------------------------------------------
-.DiscussionListItem-author {
+// Only rows with a poster: on every other row this would move the avatar (or a
+// thumbnail extension's image), and centring dropped it on pinned discussions,
+// whose author column core makes taller to fit the badges.
+.DiscussionListItem-author:has(> .Marquee-listPoster) {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
 }
 
