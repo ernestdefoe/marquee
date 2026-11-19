@@ -2,6 +2,7 @@
 
 namespace Ernestdefoe\Marquee\Source;
 
+use Ernestdefoe\Marquee\HttpClients;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\GuzzleException;
@@ -22,11 +23,15 @@ class OpenLibraryClient
 
     private ?Client $http = null;
 
+    public function __construct(private HttpClients $clients)
+    {
+    }
+
     /** @throws SourceException */
     public function get(string $path, array $query = []): array
     {
         // Open Library's search often takes several seconds (we measured 0.3 to 14), so it gets longer than the other sources.
-        $this->http ??= new Client(['base_uri' => self::BASE, 'timeout' => 12, 'connect_timeout' => 3, 'headers' => ['User-Agent' => self::AGENT]]);
+        $this->http ??= $this->clients->make(['base_uri' => self::BASE, 'timeout' => 12, 'connect_timeout' => 3, 'headers' => ['User-Agent' => self::AGENT]]);
 
         try {
             return json_decode((string) $this->http->get($path, ['query' => $query])->getBody(), true) ?: [];

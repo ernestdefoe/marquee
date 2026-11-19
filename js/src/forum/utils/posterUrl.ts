@@ -5,6 +5,6 @@ import { img } from '../util';
  * at one of the TMDB sizes: w92, w185, w300, w342, w780, w1280. Exported for
  * companion extensions: `import posterUrl from 'ext:ernestdefoe/marquee/forum/utils/posterUrl'`.
  */
-export default function posterUrl(path, size) {
+export default function posterUrl(path: string | null | undefined, size: string): string | null {
   return img(path, size);
 }

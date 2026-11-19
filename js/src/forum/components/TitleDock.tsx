@@ -1,5 +1,10 @@
 import app from 'flarum/forum/app';
-import Component from 'flarum/common/Component';
+import Component, { type ComponentAttrs } from 'flarum/common/Component';
+import type Mithril from 'mithril';
+import type Discussion from 'flarum/common/models/Discussion';
+import type PostStreamState from 'flarum/forum/states/PostStreamState';
+import type Media from '../models';
+import type { DiscussionLink } from '../types';
 import Button from 'flarum/common/components/Button';
 import Icon from 'flarum/common/components/Icon';
 import classList from 'flarum/common/utils/classList';
@@ -27,21 +32,66 @@ function topBar() {
   return bottom;
 }
 
-const ICONS = { movie: 'fas fa-film', tv: 'fas fa-tv', game: 'fas fa-gamepad', music: 'fas fa-compact-disc', book: 'fas fa-book' };
+const ICONS: Record<string, string> = {
+  movie: 'fas fa-film',
+  tv: 'fas fa-tv',
+  game: 'fas fa-gamepad',
+  music: 'fas fa-compact-disc',
+  book: 'fas fa-book',
+};
+
+/** The attrs an action button or link may carry. */
+interface PlainAttrs {
+  title?: Mithril.Children;
+  'aria-label'?: Mithril.Children;
+  className?: string;
+}
+
+/** A plain button or link vnode (a component's tag is its class). */
+const isPlain = (vnode: Mithril.Children): vnode is Mithril.Vnode<PlainAttrs> => {
+  if (!vnode || typeof vnode !== 'object' || Array.isArray(vnode)) return false;
+  const tag = (vnode as Mithril.Vnode).tag as string | { prototype?: unknown };
+  return typeof tag === 'string' ? ['a', 'button'].includes(tag) : tag === Button || tag?.prototype instanceof Button;
+};
 
 /**
  * Once the card has scrolled away, a button in the corner opens a menu for
  * each of the discussion's titles: back to its card, and what other
  * extensions put on it. Attrs: page (the DiscussionPage), show(media).
  */
-export default class TitleDock extends Component {
-  oninit(vnode) {
+/** What the dock reads of the DiscussionPage (core keeps both protected). */
+export interface DockPage {
+  discussion: Discussion | null;
+  stream: PostStreamState | null;
+}
+
+export interface TitleDockAttrs extends ComponentAttrs {
+  page: DockPage;
+  show: (media: Media) => void;
+}
+
+/** The discussion's titles, once the linked one's details have loaded. */
+interface DockTitles {
+  discussion: Discussion;
+  main: DiscussionLink;
+  related: Media[];
+}
+
+export default class TitleDock extends Component<TitleDockAttrs> {
+  open!: boolean;
+  away!: boolean;
+  onMove!: () => void;
+  onKey!: (e: KeyboardEvent) => void;
+  outside!: (e: PointerEvent) => void;
+  onSlid!: (e: TransitionEvent) => void;
+
+  oninit(vnode: Mithril.Vnode<TitleDockAttrs, this>) {
     super.oninit(vnode);
     this.open = false;
     this.away = false;
   }
 
-  oncreate(vnode) {
+  oncreate(vnode: Mithril.VnodeDOM<TitleDockAttrs, this>) {
     super.oncreate(vnode);
 
     let frame = 0;
@@ -67,7 +117,7 @@ export default class TitleDock extends Component {
       }
     };
     this.outside = (e) => {
-      if (this.open && !this.element.contains(e.target)) {
+      if (this.open && !this.element.contains(e.target as Node)) {
         this.open = false;
         m.redraw();
       }
@@ -76,19 +126,21 @@ export default class TitleDock extends Component {
     window.addEventListener('scroll', this.onMove, { passive: true });
     window.addEventListener('resize', this.onMove);
     // Quickdraw and tab bars slide into place: measure them again once they have.
-    this.onSlid = (e) => e.target instanceof Element && e.target.matches(`${BELOW}, .Quickdraw, .MobileTab`) && this.onMove();
+    this.onSlid = (e) => {
+      if (e.target instanceof Element && e.target.matches(`${BELOW}, .Quickdraw, .MobileTab`)) this.onMove();
+    };
     document.addEventListener('transitionend', this.onSlid);
     document.addEventListener('keydown', this.onKey);
     document.addEventListener('pointerdown', this.outside);
     this.onMove();
   }
 
-  onupdate(vnode) {
+  onupdate(vnode: Mithril.VnodeDOM<TitleDockAttrs, this>) {
     super.onupdate(vnode);
     this.lift();
   }
 
-  onremove(vnode) {
+  onremove(vnode: Mithril.VnodeDOM<TitleDockAttrs, this>) {
     super.onremove(vnode);
     window.removeEventListener('scroll', this.onMove);
     window.removeEventListener('resize', this.onMove);
@@ -107,22 +159,23 @@ export default class TitleDock extends Component {
       if (r.width && r.height && r.top > height / 2 && r.right > window.innerWidth - 80) lift = Math.max(lift, height - r.top);
     });
     // acpl/mobile-tab slides away while scrolling down: go by its class, not where it is mid-slide.
-    const tab = document.querySelector('.MobileTab:not(.MobileTab--hidden)');
+    const tab = document.querySelector<HTMLElement>('.MobileTab:not(.MobileTab--hidden)');
     if (tab) lift = Math.max(lift, tab.offsetHeight);
-    this.element.style.setProperty('--marquee-dock-lift', `${lift}px`);
+    const dock = this.element as HTMLElement;
+    dock.style.setProperty('--marquee-dock-lift', `${lift}px`);
 
     // The menu opens upward, into the room between the top bar and the button.
     const header = topBar();
     const button = this.element.querySelector('.MarqueeDock-button');
-    if (button) this.element.style.setProperty('--marquee-dock-room', `${Math.max(160, button.getBoundingClientRect().top - header - 20)}px`);
+    if (button) dock.style.setProperty('--marquee-dock-room', `${Math.max(160, button.getBoundingClientRect().top - header - 20)}px`);
   }
 
-  titles() {
+  titles(): DockTitles | null {
     const discussion = this.attrs.page.discussion;
     const main = discussion && linkFor(discussion);
     if (!main || !main.media.details()) return null;
 
-    const related = (discussion.marqueeRelatedMedia() || []).filter((work) => work && work.details());
+    const related = (discussion.marqueeRelatedMedia() || []).filter((work): work is Media => !!work && !!work.details());
     return { discussion, main, related };
   }
 
@@ -160,8 +213,8 @@ export default class TitleDock extends Component {
     );
   }
 
-  menu({ discussion, main, related }) {
-    const works = [main, ...related.map((media) => ({ media, season: null, episode: null, seasonData: null }))];
+  menu({ discussion, main, related }: DockTitles) {
+    const works: DiscussionLink[] = [main, ...related.map((media) => ({ media, season: null, episode: null, seasonData: null }))];
 
     return (
       <div className="MarqueeDock-menu Dropdown-menu" id="MarqueeDock-menu" role="menu">
@@ -195,8 +248,8 @@ export default class TitleDock extends Component {
    * What other extensions add to this title's card, from the card's own list,
    * so each keeps working as it does there. An icon-only button gets its label.
    */
-  extras(discussion, link, main) {
-    const card = Object.create(MediaHero.prototype);
+  extras(discussion: Discussion, link: DiscussionLink, main: DiscussionLink): Mithril.Children[] {
+    const card: MediaHero = Object.create(MediaHero.prototype);
     card.attrs = { discussion, link, main };
     card.seasonData = null;
 
@@ -204,22 +257,18 @@ export default class TitleDock extends Component {
     OWN.forEach((key) => items.has(key) && items.remove(key));
 
     // Plain buttons and links only: a menu row can't hold a dropdown.
-    const plain = (vnode) =>
-      vnode && (typeof vnode.tag === 'string' ? ['a', 'button'].includes(vnode.tag) : vnode.tag === Button || vnode.tag?.prototype instanceof Button);
-
-    return items
-      .toArray()
-      .filter(plain)
-      .map((vnode) => {
-        const attrs = vnode.attrs || {};
-        if (vnode.children && vnode.children.length) return vnode;
-        const label = attrs.title || attrs['aria-label'];
-        return label ? m(vnode.tag, { ...attrs, className: (attrs.className || '').replace('Button--icon', '') }, extractText(label)) : vnode;
-      });
+    const list: Mithril.Children[] = items.toArray();
+    return list.filter(isPlain).map((vnode) => {
+      const attrs: PlainAttrs = vnode.attrs || {};
+      const children = vnode.children as Mithril.ChildArray | string | null | undefined;
+      if (children && children.length) return vnode;
+      const label = attrs.title || attrs['aria-label'];
+      return label ? m(vnode.tag, { ...attrs, className: (attrs.className || '').replace('Button--icon', '') }, extractText(label)) : vnode;
+    });
   }
 
   /** Back to the card, showing this title. */
-  details(media) {
+  details(media: Media) {
     this.open = false;
     this.attrs.show(media);
 

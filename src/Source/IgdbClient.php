@@ -2,6 +2,7 @@
 
 namespace Ernestdefoe\Marquee\Source;
 
+use Ernestdefoe\Marquee\HttpClients;
 use Ernestdefoe\Marquee\Settings;
 use Flarum\Settings\SettingsRepositoryInterface;
 use GuzzleHttp\Client;
@@ -28,7 +29,8 @@ class IgdbClient
 
     public function __construct(
         private SettingsRepositoryInterface $settings,
-        private Cache $cache
+        private Cache $cache,
+        private HttpClients $clients
     ) {
     }
 
@@ -53,7 +55,8 @@ class IgdbClient
             if ($status === 401) {
                 $this->cache->forget(self::TOKEN_KEY);
             } elseif ($status === 429) {
-                usleep(400000);
+                // IGDB's own limit: say so now rather than hold a PHP worker waiting.
+                throw new SourceException("IGDB is busy ($endpoint)");
             } else {
                 // A 4xx is about this query, not an outage (see Outage).
                 throw new SourceException("IGDB rejected the $endpoint query ($status)");
@@ -117,20 +120,26 @@ class IgdbClient
         return $data['access_token'];
     }
 
-    /** Hold back when this forum has already made 4 calls this second. */
+    /**
+     * IGDB allows 4 calls a second. A fifth this second fails straight away
+     * (not an outage: no previous exception) instead of waiting, so no PHP
+     * worker is held; the composer's next keystroke searches again.
+     *
+     * @throws SourceException
+     */
     private function pace(): void
     {
         $key = 'marquee.igdb.rate.'.time();
         $this->cache->add($key, 0, 5);
 
         if ($this->cache->increment($key) > self::PER_SECOND) {
-            usleep((int) ((1 - fmod(microtime(true), 1)) * 1000000) + 20000);
+            throw new SourceException('IGDB call limit reached this second');
         }
     }
 
     private function http(): Client
     {
-        return $this->http ??= new Client(['timeout' => 6, 'connect_timeout' => 3]);
+        return $this->http ??= $this->clients->make(['timeout' => 6, 'connect_timeout' => 3]);
     }
 
     /** An Apicalypse string literal. */

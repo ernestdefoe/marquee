@@ -9,8 +9,14 @@ use Ernestdefoe\Marquee\Source\SourceException;
 use Ernestdefoe\Marquee\Source\Sources;
 use Ernestdefoe\Marquee\Translation\Translator;
 use Ernestdefoe\Marquee\Translation\WikipediaOverview;
-use Flarum\Discussion\Discussion;
+use Ernestdefoe\Marquee\Job\DescribeMedia;
+use Ernestdefoe\Marquee\Job\FetchSeason;
+use Ernestdefoe\Marquee\Job\PruneMedia;
+use Flarum\Queue\RoutingQueue;
+use Illuminate\Contracts\Cache\Repository as Cache;
+use Illuminate\Contracts\Queue\Queue;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Queue\SyncQueue;
 
 /**
  * Titles and seasons are fetched once and kept. A stored copy is refreshed only
@@ -20,9 +26,10 @@ use Illuminate\Database\UniqueConstraintViolationException;
  * On a non-English forum a game or book also gets its description in the data
  * language (Wikipedia, then DeepL). That takes longer than the source itself,
  * so the composer's quick look-up stores the source's data and leaves the
- * description until after its response; posting finishes whatever is left
- * before the discussion is shown. A game Wikipedia has no article on in that
- * language is looked at again daily (marquee:describe), without the source.
+ * description to a queued job (with a queue worker) or to posting, which
+ * queues it too (resolveForPost: on the sync queue that runs before the
+ * response). A game Wikipedia has no article on in that language is looked
+ * at again daily (marquee:describe), without the source.
  */
 class MediaRepository
 {
@@ -35,13 +42,14 @@ class MediaRepository
         private Outage $outage,
         private WikipediaOverview $wikipedia,
         private Translator $translator,
-        private Later $later
+        private Queue $queue,
+        private Cache $cache
     ) {
     }
 
     /**
-     * @param bool $quick answer as soon as the source has, and look for the
-     *                    description in the data language after the response
+     * @param bool $quick answer as soon as the source has, and queue the
+     *                    description in the data language
      * @throws SourceException
      */
     public function resolve(string $kind, string $externalId, bool $quick = false): Media
@@ -49,19 +57,17 @@ class MediaRepository
         $media = Media::query()->where('kind', $kind)->where('external_id', $externalId)->first();
         $describes = $this->describes($kind);
 
-        if ($media && $media->fetched_at->gt(Carbon::now()->subDays(self::MEDIA_TTL_DAYS))) {
+        if ($media && ! $this->stale($media)) {
             if ($describes && $media->describe_at?->lte(Carbon::now())) {
-                $quick ? $this->later->run(fn () => $this->describe($media)) : $this->describe($media);
+                $quick ? $this->defer($media) : $this->describe($media);
             }
 
             return $media;
         }
 
-        // The stale copy answers the composer; the refresh waits for the response to go.
-        if ($quick && $media && $describes) {
-            $this->later->run(function () use ($kind, $externalId) {
-                $this->resolve($kind, $externalId);
-            });
+        // The stale copy answers the composer; the refresh is queued.
+        if ($quick && $media) {
+            $this->defer($media);
 
             return $media;
         }
@@ -85,6 +91,18 @@ class MediaRepository
             $data = $this->describeData($kind, $data, $media?->data);
         }
 
+        $media = $this->store($media, $kind, $externalId, $data, $pending);
+
+        if ($pending) {
+            $this->defer($media);
+        }
+
+        return $media;
+    }
+
+    /** @param array<string, mixed> $data */
+    private function store(?Media $media, string $kind, string $externalId, array $data, bool $pending): Media
+    {
         $fields = [
             'kind' => $kind,
             'external_id' => $externalId,
@@ -105,11 +123,97 @@ class MediaRepository
             $media->forceFill($fields)->save();
         }
 
-        if ($pending) {
-            $this->later->run(fn () => $this->describe($media));
+        return $media;
+    }
+
+    /**
+     * Posting a discussion: the source's data now, its description queued. On
+     * the sync queue the job runs straight away, so the discussion is never
+     * shown with the English description; with a queue worker posting waits
+     * for neither.
+     *
+     * @throws SourceException
+     */
+    public function resolveForPost(string $kind, string $externalId): Media
+    {
+        $media = $this->resolve($kind, $externalId, true);
+
+        // On a real queue the quick look-up has queued it already.
+        if ($this->sync() && $this->unfinished($media)) {
+            $this->queue->push(new DescribeMedia($media->id));
+            $media->refresh();
         }
 
         return $media;
+    }
+
+    /** Queue storing a season, unless a fresh copy is stored already. */
+    public function seasonLater(Media $media, int $number): void
+    {
+        $fresh = $media->seasons()->where('number', $number)->where('fetched_at', '>', Carbon::now()->subDays(self::SEASON_TTL_DAYS))->exists();
+
+        if (! $fresh) {
+            $this->queue->push(new FetchSeason($media->id, $number));
+        }
+    }
+
+    /**
+     * Queue the titles a discussion let go of, to delete once nothing else links to them.
+     *
+     * @param list<int|null> $ids
+     */
+    public function pruneLater(array $ids): void
+    {
+        $this->queue->push(new PruneMedia(array_values($ids)));
+    }
+
+    private function sync(): bool
+    {
+        $driver = $this->queue instanceof RoutingQueue ? $this->queue->getDriver() : $this->queue;
+
+        return $driver instanceof SyncQueue;
+    }
+
+    private function stale(Media $media): bool
+    {
+        return $media->fetched_at->lte(Carbon::now()->subDays(self::MEDIA_TTL_DAYS));
+    }
+
+    /** A stale copy, or a description still due. */
+    private function unfinished(Media $media): bool
+    {
+        return $this->stale($media) || ($this->describes($media->kind) && $media->describe_at?->lte(Carbon::now()));
+    }
+
+    /**
+     * Queue what a quick look-up left. On the sync queue that would run inside
+     * the look-up and make the composer wait, so it is left instead: describe_at
+     * is due, so posting the discussion finishes it, or else the daily
+     * marquee:describe.
+     */
+    private function defer(Media $media): void
+    {
+        // One job per title at a time: look-ups while it waits add none.
+        if (! $this->sync() && $this->cache->add(self::queuedKey($media), true, 600)) {
+            $this->queue->push(new DescribeMedia($media->id));
+        }
+    }
+
+    private static function queuedKey(Media $media): string
+    {
+        return 'marquee.describe-queued.'.$media->id;
+    }
+
+    /** The queued half of a quick look-up: a refresh if the copy is stale, else the description. */
+    public function finish(Media $media): void
+    {
+        $this->cache->forget(self::queuedKey($media));
+
+        if ($this->stale($media)) {
+            $this->resolve($media->kind, $media->external_id);
+        } elseif ($media->describe_at?->lte(Carbon::now())) {
+            $this->describe($media);
+        }
     }
 
     /**
@@ -212,23 +316,19 @@ class MediaRepository
             return 0;
         }
 
-        $related = [];
-        Discussion::query()->whereNotNull('marquee_related')->toBase()->pluck('marquee_related')
-            ->each(function ($json) use (&$related) {
-                foreach ((array) json_decode((string) $json, true) as $id) {
-                    $related[(int) $id] = true;
-                }
-            });
-
         $deleted = 0;
         foreach (array_chunk($candidates, 500) as $chunk) {
-            $linked = Discussion::query()->whereIn('marquee_media_id', $chunk)->distinct()->pluck('marquee_media_id')->map('intval')->all();
-            $unused = array_values(array_filter(array_diff($chunk, $linked), fn ($id) => ! isset($related[$id])));
+            // One statement each: a title linked between a check and the delete
+            // would otherwise go, and its new link with it (the link cascades).
+            $deleted += Media::query()->whereIn('id', $chunk)
+                ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('marquee_discussions')->whereColumn('marquee_discussions.media_id', 'marquee_media.id'))
+                ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('marquee_related')->whereColumn('marquee_related.media_id', 'marquee_media.id'))
+                ->delete();
 
-            if ($unused) {
-                Season::query()->whereIn('media_id', $unused)->delete();
-                $deleted += Media::query()->whereIn('id', $unused)->delete();
-            }
+            // Their seasons (cascaded already where foreign keys are enforced).
+            Season::query()->whereIn('media_id', $chunk)
+                ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('marquee_media')->whereColumn('marquee_media.id', 'marquee_seasons.media_id'))
+                ->delete();
         }
 
         return $deleted;

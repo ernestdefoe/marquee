@@ -40,8 +40,9 @@ class BackdropController implements RequestHandlerInterface
 
         $discussion = Discussion::whereVisibleTo($actor)->findOrFail((int) Arr::get($request->getAttribute('routeParameters'), 'id'));
 
-        $ids = DiscussionFields::titleIds($discussion);
-        if (! $ids || ! DiscussionFields::canLink($actor, $discussion)) {
+        $link = $discussion->marqueeLink;
+        $ids = $link?->titleIds() ?? [];
+        if (! $link || ! $ids || ! DiscussionFields::canLink($actor, $discussion)) {
             return new JsonResponse(['errors' => [['status' => '403', 'code' => 'permission_denied']]], 403);
         }
 
@@ -62,11 +63,27 @@ class BackdropController implements RequestHandlerInterface
 
         $this->validator->assertImageValid('backdrop', $file);
 
-        $map = (array) ($discussion->marquee_backdrops ?? []);
-        $before = $map[$media] ?? null;
-        $map[$media] = $this->backdrops->store($discussion->id, (string) $file->getStream()->getMetadata('uri'));
-        $discussion->marquee_backdrops = $map;
-        $discussion->save();
+        $stored = $this->backdrops->store($discussion->id, (string) $file->getStream()->getMetadata('uri'));
+
+        // The map is read and written under a lock, so two uploads at once both keep
+        // their entry. Never waited for: the second is told to try again.
+        $lock = $this->cache->lock('marquee.backdrops.'.$discussion->id, 10);
+        if (! $lock->get()) {
+            $this->backdrops->delete($stored);
+            throw new ValidationException(['backdrop' => $this->translator->trans('ernestdefoe-marquee.api.backdrop_busy')]);
+        }
+
+        try {
+            $link = $link->fresh() ?? $link;
+            $map = (array) ($link->backdrops ?? []);
+            $before = $map[$media] ?? null;
+            $map[$media] = $stored;
+            $link->backdrops = $map;
+            $link->save();
+        } finally {
+            $lock->release();
+        }
+
         $this->backdrops->delete($before);
 
         return new JsonResponse(['data' => ['backdrops' => $this->backdrops->values($map)]]);

@@ -1,15 +1,18 @@
 import app from 'flarum/forum/app';
-import EpisodeModal from './components/EpisodeModal';
+import type Mithril from 'mithril';
+import type Discussion from 'flarum/common/models/Discussion';
+import type { DiscussionLink, SeasonSummary } from './types';
 import { text, img, pad, date, linkFor, pickFromMedia, showScores } from './util';
 import { loadSeason } from './api';
+import { openEpisodeModal } from './components/openers';
 
 /** A season a chip asked the header's season browser to open. */
-export const seasonRequest = { number: null };
+export const seasonRequest: { number: number | null } = { number: null };
 
-let popover = null;
+let popover: HTMLDivElement | null = null;
 
 /** The show a post's discussion is linked to, with its details loaded. */
-export function showFor(discussion) {
+export function showFor(discussion: Discussion | false | null | undefined): DiscussionLink | null {
   const link = discussion && linkFor(discussion);
   return link && link.media.kind() === 'tv' && link.media.details() ? link : null;
 }
@@ -19,17 +22,17 @@ export function showFor(discussion) {
  * but only for seasons and episodes the linked show really has. Runs on create
  * and update, so edited and live-arriving posts are covered.
  */
-export function decorate(element, discussion) {
+export function decorate(element: Element | null, discussion: Discussion | false | null | undefined) {
   const link = showFor(discussion);
   if (!link || !element) return;
 
-  const seasons = link.media.details().seasons || [];
+  const seasons = link.media.details()?.seasons || [];
 
-  element.querySelectorAll('.MarqueeRef:not([data-mq])').forEach((el) => {
+  element.querySelectorAll<HTMLElement>('.MarqueeRef:not([data-mq])').forEach((el) => {
     el.dataset.mq = '1';
 
-    const season = seasons.find((s) => s.number === parseInt(el.dataset.season, 10));
-    const episode = parseInt(el.dataset.episode, 10) || null;
+    const season = seasons.find((s) => s.number === parseInt(el.dataset.season || '', 10));
+    const episode = parseInt(el.dataset.episode || '', 10) || null;
     if (!season || (episode && episode > season.episodes)) return;
 
     el.classList.add('MarqueeRef--live', episode ? 'MarqueeRef--episode' : 'MarqueeRef--season');
@@ -38,7 +41,11 @@ export function decorate(element, discussion) {
 
     const open = () => (episode ? openEpisode(link, season.number, episode) : openSeason(season.number));
     el.addEventListener('click', open);
-    el.addEventListener('keydown', (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), open()));
+    el.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      open();
+    });
     el.addEventListener('mouseenter', () => preview(el, link, season, episode));
     el.addEventListener('mouseleave', hidePreview);
 
@@ -52,29 +59,30 @@ export function decorate(element, discussion) {
           title.textContent = ep.title;
           el.appendChild(title);
         },
+        // The chip still works without the episode's name; the season is fetched again on click.
         () => {}
       );
     }
   });
 }
 
-function openEpisode(link, number, episode) {
+function openEpisode(link: DiscussionLink, number: number, episode: number) {
   hidePreview();
   loadSeason(link.media.id(), number).then((season) => {
     const ep = season.episodes.find((e) => e.n === episode);
-    if (ep) app.modal.show(EpisodeModal, { link: pickFromMedia(link.media), season, episode: ep });
+    if (ep) openEpisodeModal(pickFromMedia(link.media), season, ep);
   });
 }
 
-function openSeason(number) {
+function openSeason(number: number) {
   hidePreview();
   seasonRequest.number = number;
   document.querySelector('.MarqueeSeasons')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   m.redraw();
 }
 
-function preview(el, link, season, episode) {
-  const show = (html) => {
+function preview(el: HTMLElement, link: DiscussionLink, season: SeasonSummary, episode: number | null) {
+  const show = (html: Mithril.Children) => {
     popover ??= Object.assign(document.createElement('div'), { className: 'MarqueeRefPreview' });
     if (!popover.isConnected) document.body.appendChild(popover);
     m.render(popover, html);

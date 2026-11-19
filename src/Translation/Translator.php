@@ -67,47 +67,19 @@ class Translator
             return $data;
         }
 
-        // Every string to translate, in order, and where each one goes back.
-        $texts = [];
-        $slots = [];
-        foreach ($fields as $field) {
-            $value = $data[$field] ?? null;
-            foreach (is_array($value) ? $value : [$value] as $i => $text) {
-                if (is_string($text) && trim($text) !== '') {
-                    $texts[] = $text;
-                    $slots[] = [$field, is_array($value) ? $i : null];
-                }
-            }
-        }
-
+        [$texts, $slots] = self::collect($data, $fields);
         if (! $texts) {
             return $data;
         }
 
         $hash = sha1($target."\n".json_encode($texts));
-        $translated = null;
 
-        // Same English as last time: the stored copy already holds its translation, slot for slot.
-        if (($previous['translation']['hash'] ?? null) === $hash) {
-            $translated = [];
-            foreach ($slots as [$field, $index]) {
-                $old = $index === null ? ($previous[$field] ?? null) : ($previous[$field][$index] ?? null);
-                if (! is_string($old)) {
-                    $translated = null;
-                    break;
-                }
-                $translated[] = $old;
-            }
-        }
+        try {
+            $translated = self::reuse($previous, $hash, $slots) ?? $this->deepl->translate($key, $texts, $target);
+        } catch (RuntimeException $e) {
+            $this->log->info('[marquee] DeepL translation skipped: '.$e->getMessage());
 
-        if ($translated === null) {
-            try {
-                $translated = $this->deepl->translate($key, $texts, $target);
-            } catch (RuntimeException $e) {
-                $this->log->info('[marquee] DeepL translation skipped: '.$e->getMessage());
-
-                return $data;
-            }
+            return $data;
         }
 
         foreach ($slots as $n => [$field, $index]) {
@@ -121,5 +93,54 @@ class Translator
         $data['translation'] = ['by' => 'deepl', 'lang' => $target, 'hash' => $hash];
 
         return $data;
+    }
+
+    /**
+     * Every string to translate, in order, and where each one goes back.
+     *
+     * @param array<string, mixed> $data
+     * @param list<string> $fields
+     * @return array{0: list<string>, 1: list<array{0: string, 1: int|null}>}
+     */
+    private static function collect(array $data, array $fields): array
+    {
+        $texts = [];
+        $slots = [];
+        foreach ($fields as $field) {
+            $value = $data[$field] ?? null;
+            foreach (is_array($value) ? $value : [$value] as $i => $text) {
+                if (is_string($text) && trim($text) !== '') {
+                    $texts[] = $text;
+                    $slots[] = [$field, is_array($value) ? $i : null];
+                }
+            }
+        }
+
+        return [$texts, $slots];
+    }
+
+    /**
+     * Same English as last time: the stored copy already holds its translation, slot for slot.
+     *
+     * @param array<string, mixed>|null $previous
+     * @param list<array{0: string, 1: int|null}> $slots
+     * @return list<string>|null
+     */
+    private static function reuse(?array $previous, string $hash, array $slots): ?array
+    {
+        if (($previous['translation']['hash'] ?? null) !== $hash) {
+            return null;
+        }
+
+        $translated = [];
+        foreach ($slots as [$field, $index]) {
+            $old = $index === null ? ($previous[$field] ?? null) : ($previous[$field][$index] ?? null);
+            if (! is_string($old)) {
+                return null;
+            }
+            $translated[] = $old;
+        }
+
+        return $translated;
     }
 }

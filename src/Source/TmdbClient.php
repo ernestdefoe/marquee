@@ -2,6 +2,7 @@
 
 namespace Ernestdefoe\Marquee\Source;
 
+use Ernestdefoe\Marquee\HttpClients;
 use Ernestdefoe\Marquee\Settings;
 use Flarum\Settings\SettingsRepositoryInterface;
 use GuzzleHttp\Client;
@@ -18,7 +19,8 @@ class TmdbClient
     public function __construct(
         private SettingsRepositoryInterface $settings,
         private Cache $cache,
-        private DataLanguage $language
+        private DataLanguage $language,
+        private HttpClients $clients
     ) {
     }
 
@@ -35,7 +37,7 @@ class TmdbClient
     /** @throws SourceException */
     public function get(string $path, array $query = []): array
     {
-        $this->http ??= new Client(['base_uri' => self::BASE, 'timeout' => 6, 'connect_timeout' => 3]);
+        $this->http ??= $this->clients->make(['base_uri' => self::BASE, 'timeout' => 6, 'connect_timeout' => 3]);
 
         try {
             $response = $this->http->get($path, [

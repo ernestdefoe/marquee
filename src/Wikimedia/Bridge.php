@@ -2,6 +2,7 @@
 
 namespace Ernestdefoe\Marquee\Wikimedia;
 
+use Ernestdefoe\Marquee\HttpClients;
 use Flarum\Http\UrlGenerator;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
@@ -19,7 +20,7 @@ class Bridge
 {
     private ?Client $http = null;
 
-    public function __construct(private UrlGenerator $url)
+    public function __construct(private UrlGenerator $url, private HttpClients $clients)
     {
     }
 
@@ -160,7 +161,7 @@ class Bridge
     protected function client(): Client
     {
         // Wikimedia asks every client to say who it is and how to reach them.
-        return $this->http ??= new Client(['timeout' => 5, 'connect_timeout' => 3, 'allow_redirects' => ['max' => 3, 'protocols' => ['https']], 'headers' => [
+        return $this->http ??= $this->clients->make(['timeout' => 5, 'connect_timeout' => 3, 'allow_redirects' => ['max' => 3, 'protocols' => ['https']], 'headers' => [
             'User-Agent' => 'Marquee for Flarum (+https://github.com/ernestdefoe/marquee; '.$this->url->to('forum')->base().')',
         ]]);
     }

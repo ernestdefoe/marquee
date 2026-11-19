@@ -1,23 +1,23 @@
 <?php
 
 use Ernestdefoe\Marquee\Api;
-use Ernestdefoe\Marquee\Backdrops;
 use Ernestdefoe\Marquee\Console;
 use Ernestdefoe\Marquee\Formatter;
+use Ernestdefoe\Marquee\Link;
+use Ernestdefoe\Marquee\Listener;
 use Ernestdefoe\Marquee\Media;
-use Ernestdefoe\Marquee\MediaRepository;
-use Ernestdefoe\Marquee\Settings;
 use Flarum\Api\Endpoint;
 use Flarum\Api\Resource\DiscussionResource;
 use Flarum\Api\Resource\ForumResource;
+use Flarum\Api\Resource\PostResource;
 use Flarum\Discussion\Discussion;
-use Flarum\Discussion\Event\Deleted;
 use Flarum\Extend;
 use Illuminate\Console\Scheduling\Event;
 
 return [
     (new Extend\Frontend('forum'))
         ->js(__DIR__.'/js/dist/forum.js')
+        ->jsDirectory(__DIR__.'/js/dist/forum')
         ->css(__DIR__.'/less/forum.less'),
 
     (new Extend\Frontend('admin'))
@@ -35,13 +35,11 @@ return [
         ->get('/marquee/media/{id:\d+}/seasons/{number:\d+}', 'marquee.season', Api\SeasonController::class)
         ->post('/marquee/discussions/{id:\d+}/backdrop', 'marquee.backdrop', Api\BackdropController::class),
 
+    // A discussion's title lives in marquee_discussions (Link); other extensions read it there too.
     (new Extend\Model(Discussion::class))
-        ->belongsTo('marqueeMedia', Media::class, 'marquee_media_id')
-        ->cast('marquee_media_id', 'integer')
-        ->cast('marquee_season', 'integer')
-        ->cast('marquee_episode', 'integer')
-        ->cast('marquee_related', 'array')
-        ->cast('marquee_backdrops', 'array'),
+        ->hasOne('marqueeLink', Link::class, 'discussion_id')
+        ->relationship('marqueeMedia', fn (Discussion $discussion) => $discussion->hasOneThrough(Media::class, Link::class, 'discussion_id', 'id', 'id', 'media_id'))
+        ->relationship('marqueeRelatedMedia', fn (Discussion $discussion) => $discussion->belongsToMany(Media::class, 'marquee_related', 'discussion_id', 'media_id')->orderByPivot('position')),
 
     new Extend\ApiResource(Api\MediaResource::class),
 
@@ -49,12 +47,19 @@ return [
         ->fields(Api\DiscussionFields::class)
         ->endpoint(
             [Endpoint\Index::class, Endpoint\Show::class, Endpoint\Create::class, Endpoint\Update::class],
-            fn (Endpoint\Index|Endpoint\Show|Endpoint\Create|Endpoint\Update $endpoint) => $endpoint->addDefaultInclude(['marqueeMedia'])
+            fn (Endpoint\Index|Endpoint\Show|Endpoint\Create|Endpoint\Update $endpoint) => $endpoint->addDefaultInclude(['marqueeMedia'])->eagerLoad(['marqueeLink'])
         )
         // The related titles' cards: the discussion page only, never the list.
         ->endpoint(
             [Endpoint\Show::class, Endpoint\Update::class],
             fn (Endpoint\Show|Endpoint\Update $endpoint) => $endpoint->addDefaultInclude(['marqueeRelatedMedia'])
+        ),
+
+    // Posts carry their discussion (a user's Posts tab, search): its link and title in one query each.
+    (new Extend\ApiResource(PostResource::class))
+        ->endpoint(
+            [Endpoint\Index::class, Endpoint\Show::class],
+            fn (Endpoint\Index|Endpoint\Show $endpoint) => $endpoint->eagerLoadWhenIncluded(['discussion' => ['discussion.marqueeLink', 'discussion.marqueeMedia']])
         ),
 
     (new Extend\ApiResource(ForumResource::class))
@@ -74,24 +79,21 @@ return [
             $event->daily()->withoutOverlapping();
         }),
 
-    // A deleted discussion's titles go once nothing else links to them.
     (new Extend\Event())
-        ->listen(Deleted::class, function (Deleted $event): void {
-            resolve(MediaRepository::class)->prune([$event->discussion->marquee_media_id, ...(array) ($event->discussion->marquee_related ?? [])]);
-            resolve(Backdrops::class)->deleteAll($event->discussion->marquee_backdrops);
-        }),
+        ->listen('eloquent.deleting: '.Discussion::class, Listener\ForgetDeletedDiscussion::class),
 
+    // String keys, not Settings::…: extend.php must not autoload the extension's own classes while it boots.
     (new Extend\Settings())
-        ->default(Settings::LANGUAGE, '')
-        ->default(Settings::LIST_POSTERS, true)
-        ->default(Settings::SHOW_SCORES, true)
-        ->default(Settings::SHOW_SOURCE_LINK, true)
-        ->default(Settings::LIST_META, 'kind_year')
-        ->default(Settings::TITLE_YEAR, true)
-        ->default(Settings::GAME_BACKDROP, 'artwork_screenshot')
-        ->default(Settings::BACKDROP_COLOR, '')
-        ->default(Settings::BACKDROP_TAG_COLOR, false)
-        ->default(Settings::DOCK, true)
-        ->default(Settings::DOCK_ICON, '')
-        ->default(Settings::TAGS, '{}'),
+        ->default('ernestdefoe-marquee.language', '')
+        ->default('ernestdefoe-marquee.list_posters', true)
+        ->default('ernestdefoe-marquee.show_scores', true)
+        ->default('ernestdefoe-marquee.show_source_link', true)
+        ->default('ernestdefoe-marquee.list_meta', 'kind_year')
+        ->default('ernestdefoe-marquee.title_year', true)
+        ->default('ernestdefoe-marquee.game_backdrop', 'artwork_screenshot')
+        ->default('ernestdefoe-marquee.backdrop_color', '')
+        ->default('ernestdefoe-marquee.backdrop_tag_color', false)
+        ->default('ernestdefoe-marquee.dock', true)
+        ->default('ernestdefoe-marquee.dock_icon', '')
+        ->default('ernestdefoe-marquee.tags', '{}'),
 ];

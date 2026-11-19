@@ -45,7 +45,8 @@ class LookupController implements RequestHandlerInterface
         }
 
         try {
-            // Quick: the description in the data language follows after the response.
+            // Quick: the source's data now; the description in the data language is
+            // queued with a queue worker, else finished when the discussion is posted.
             $media = $this->media->resolve($kind, $id, true);
         } catch (SourceException) {
             return new JsonResponse(['errors' => [['status' => '502', 'code' => 'source_unavailable']]], 502);

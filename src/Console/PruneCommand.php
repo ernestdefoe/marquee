@@ -8,7 +8,7 @@ use Flarum\Console\AbstractCommand;
 /**
  * Deletes stored titles nothing links to: titles looked up in the composer but
  * never posted, and any a discussion let go of before Marquee 1.15.1. A title
- * a discussion lets go of now is deleted straight away.
+ * a discussion lets go of now goes by a queued job (PruneMedia) instead.
  */
 class PruneCommand extends AbstractCommand
 {

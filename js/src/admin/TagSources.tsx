@@ -1,20 +1,30 @@
 import app from 'flarum/admin/app';
-import Component from 'flarum/common/Component';
+import Component, { type ComponentAttrs } from 'flarum/common/Component';
+import type Mithril from 'mithril';
+import type Stream from 'flarum/common/utils/Stream';
+import type Tag from 'ext:flarum/tags/common/models/Tag';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Select from 'flarum/common/components/Select';
 import tagIcon from 'ext:flarum/tags/common/helpers/tagIcon';
 
-const t = (key) => app.translator.trans(`ernestdefoe-marquee.admin.${key}`);
+const t = (key: string) => app.translator.trans(`ernestdefoe-marquee.admin.${key}`);
 
 /**
  * Which tags search which source. A discussion started under a mapped tag gets
  * the title picker; every other tag keeps the normal composer.
  */
-export default class TagSources extends Component {
-  oninit(vnode) {
+export interface TagSourcesAttrs extends ComponentAttrs {
+  /** The setting: a JSON map of tag id to kind. */
+  stream: Stream<string>;
+}
+
+export default class TagSources extends Component<TagSourcesAttrs> {
+  tags!: Tag[] | null;
+
+  oninit(vnode: Mithril.Vnode<TagSourcesAttrs, this>) {
     super.oninit(vnode);
     this.tags = null;
-    app.store.find('tags').then((tags) => {
+    app.store.find<Tag[]>('tags').then((tags) => {
       this.tags = tags;
       m.redraw();
     });
@@ -46,7 +56,7 @@ export default class TagSources extends Component {
                     {tagIcon(tag)} {tag.name()}
                   </td>
                   <td>
-                    <Select value={map[tag.id()] || ''} options={options} onchange={(value) => this.set(tag.id(), value)} />
+                    <Select value={map[String(tag.id())] || ''} options={options} onchange={(value: string) => this.set(String(tag.id()), value)} />
                   </td>
                 </tr>
               ))}
@@ -57,15 +67,16 @@ export default class TagSources extends Component {
     );
   }
 
-  map() {
+  map(): Record<string, string> {
     try {
       return JSON.parse(this.attrs.stream() || '{}') || {};
     } catch (e) {
+      // A setting that isn't valid JSON maps no tags; saving writes a valid one.
       return {};
     }
   }
 
-  set(tagId, kind) {
+  set(tagId: string, kind: string) {
     const map = this.map();
     if (kind) map[tagId] = kind;
     else delete map[tagId];

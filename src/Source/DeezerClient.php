@@ -2,6 +2,7 @@
 
 namespace Ernestdefoe\Marquee\Source;
 
+use Ernestdefoe\Marquee\HttpClients;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use RuntimeException;
@@ -20,10 +21,14 @@ class DeezerClient
 
     private ?Client $http = null;
 
+    public function __construct(private HttpClients $clients)
+    {
+    }
+
     /** @throws SourceException */
     public function get(string $path, array $query = []): array
     {
-        $this->http ??= new Client(['base_uri' => self::BASE, 'timeout' => 6, 'connect_timeout' => 3]);
+        $this->http ??= $this->clients->make(['base_uri' => self::BASE, 'timeout' => 6, 'connect_timeout' => 3]);
 
         try {
             $data = json_decode((string) $this->http->get($path, ['query' => $query])->getBody(), true) ?: [];

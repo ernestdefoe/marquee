@@ -2,6 +2,7 @@
 
 namespace Ernestdefoe\Marquee\Translation;
 
+use Ernestdefoe\Marquee\HttpClients;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use RuntimeException;
@@ -14,6 +15,10 @@ class DeepL
 {
     private ?Client $http = null;
 
+    public function __construct(private HttpClients $clients)
+    {
+    }
+
     /**
      * @param list<string> $texts
      * @return list<string>
@@ -21,7 +26,7 @@ class DeepL
      */
     public function translate(string $key, array $texts, string $target): array
     {
-        $this->http ??= new Client(['timeout' => 8, 'connect_timeout' => 3]);
+        $this->http ??= $this->clients->make(['timeout' => 8, 'connect_timeout' => 3]);
         $base = str_ends_with($key, ':fx') ? 'https://api-free.deepl.com' : 'https://api.deepl.com';
 
         try {

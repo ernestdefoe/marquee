@@ -18,5 +18,10 @@ return [
         $schema->getConnection()->table('settings')->where('key', 'ernestdefoe-marquee.game_screenshot_backdrop')->delete();
     },
     'down' => function (Builder $schema) {
+        // Back to the old switch: off where only artwork was allowed.
+        $settings = $schema->getConnection()->table('settings');
+        if ($settings->where('key', 'ernestdefoe-marquee.game_backdrop')->value('value') === 'artwork') {
+            $schema->getConnection()->table('settings')->updateOrInsert(['key' => 'ernestdefoe-marquee.game_screenshot_backdrop'], ['value' => '0']);
+        }
     },
 ];

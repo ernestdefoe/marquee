@@ -17,6 +17,7 @@ use Ernestdefoe\Marquee\Translation\Translator;
 use Ernestdefoe\Marquee\Source\IgdbGames;
 use Flarum\Formatter\Formatter;
 use Ernestdefoe\Marquee\Source\TmdbClient;
+use Ernestdefoe\Marquee\Link;
 use Flarum\Discussion\Discussion;
 use Flarum\Tags\Tag;
 use Flarum\Testing\integration\RetrievesAuthorizedUsers;
@@ -61,10 +62,19 @@ class MarqueeTest extends TestCase
                     'data' => json_encode(['number' => 1, 'episodes' => [['n' => 1, 'title' => 'Pilot']]])],
             ],
             Discussion::class => [
-                ['id' => 1, 'title' => 'The Matrix (1999)', 'user_id' => 1, 'created_at' => $now, 'comment_count' => 1, 'marquee_media_id' => 1],
-                ['id' => 2, 'title' => 'Breaking Bad (2008) S01E01: Pilot', 'user_id' => 1, 'created_at' => $now, 'comment_count' => 1, 'marquee_media_id' => 2, 'marquee_season' => 1, 'marquee_episode' => 1],
+                ['id' => 1, 'title' => 'The Matrix (1999)', 'user_id' => 1, 'created_at' => $now, 'comment_count' => 1],
+                ['id' => 2, 'title' => 'Breaking Bad (2008) S01E01: Pilot', 'user_id' => 1, 'created_at' => $now, 'comment_count' => 1],
+            ],
+            'marquee_discussions' => [
+                ['discussion_id' => 1, 'media_id' => 1],
+                ['discussion_id' => 2, 'media_id' => 2, 'season' => 1, 'episode' => 1],
             ],
         ]);
+    }
+
+    private static function link(int $discussion): ?Link
+    {
+        return Link::query()->find($discussion);
     }
 
     private function json($response): array
@@ -165,14 +175,14 @@ class MarqueeTest extends TestCase
         ]));
 
         $this->assertSame(403, $response->getStatusCode());
-        $this->assertSame(1, Discussion::find(1)->marquee_media_id);
+        $this->assertSame(1, self::link(1)?->media_id);
     }
 
     private function ownDiscussion(): void
     {
         $this->prepareDatabase([Discussion::class => [
-            ['id' => 3, 'title' => 'Mine', 'user_id' => 2, 'created_at' => Carbon::now()->toDateTimeString(), 'comment_count' => 1, 'marquee_media_id' => 1],
-        ]]);
+            ['id' => 3, 'title' => 'Mine', 'user_id' => 2, 'created_at' => Carbon::now()->toDateTimeString(), 'comment_count' => 1],
+        ], 'marquee_discussions' => [['discussion_id' => 3, 'media_id' => 1]]]);
     }
 
     private function unlinkOwn()
@@ -190,7 +200,7 @@ class MarqueeTest extends TestCase
         $this->ownDiscussion();
 
         $this->assertSame(200, $this->unlinkOwn()->getStatusCode());
-        $this->assertNull(Discussion::find(3)->marquee_media_id);
+        $this->assertNull(self::link(3)?->media_id);
     }
 
     #[Test]
@@ -204,7 +214,7 @@ class MarqueeTest extends TestCase
         $this->assertFalse($page['data']['attributes']['canMarqueeLink']);
         $this->assertTrue($page['data']['attributes']['canRename'], 'renaming itself is untouched');
         $this->assertSame(403, $this->unlinkOwn()->getStatusCode());
-        $this->assertSame(1, Discussion::find(3)->marquee_media_id);
+        $this->assertSame(1, self::link(3)?->media_id);
     }
 
     private function unlinkAsModerator()
@@ -224,7 +234,7 @@ class MarqueeTest extends TestCase
         $unlink = $this->unlinkAsModerator();
 
         $this->assertSame(200, $unlink()->getStatusCode());
-        $this->assertNull(Discussion::find(1)->marquee_media_id);
+        $this->assertNull(self::link(1)?->media_id);
     }
 
     #[Test]
@@ -235,7 +245,7 @@ class MarqueeTest extends TestCase
         $this->database()->table('group_permission')->where('permission', 'discussion.marqueeLink')->delete();
 
         $this->assertSame(403, $unlink()->getStatusCode());
-        $this->assertSame(1, Discussion::find(1)->marquee_media_id);
+        $this->assertSame(1, self::link(1)?->media_id);
     }
 
     private function relate(array $related, int $as = 1, int $discussion = 1, array $attributes = [])
@@ -254,7 +264,7 @@ class MarqueeTest extends TestCase
         $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
 
         // The linked title itself and repeats are dropped.
-        $this->assertSame([2], Discussion::find(1)->marquee_related);
+        $this->assertSame([2], (self::link(1)?->relatedIds() ?: null));
 
         $page = $this->json($this->send($this->request('GET', '/api/discussions/1', ['authenticatedAs' => 2])));
         $this->assertSame([['type' => 'marquee-media', 'id' => '2']], $page['data']['relationships']['marqueeRelatedMedia']['data']);
@@ -265,7 +275,7 @@ class MarqueeTest extends TestCase
         $this->assertArrayNotHasKey('marqueeRelatedMedia', $list['data'][0]['relationships'] ?? []);
 
         $this->assertSame(200, $this->relate([])->getStatusCode());
-        $this->assertNull(Discussion::find(1)->marquee_related);
+        $this->assertNull((self::link(1)?->relatedIds() ?: null));
     }
 
     #[Test]
@@ -285,12 +295,12 @@ class MarqueeTest extends TestCase
     public function relinking_to_a_related_title_takes_it_out_of_the_related_ones(): void
     {
         $this->relate([['kind' => 'tv', 'id' => '1396']], 1, 1);
-        $this->assertSame([2], Discussion::find(1)->marquee_related);
+        $this->assertSame([2], (self::link(1)?->relatedIds() ?: null));
 
         $response = $this->relate([['kind' => 'tv', 'id' => '1396'], ['kind' => 'movie', 'id' => '603']], 1, 1, ['marquee' => ['kind' => 'tv', 'id' => '1396', 'season' => null, 'episode' => null]]);
         $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
-        $this->assertSame(2, Discussion::find(1)->marquee_media_id);
-        $this->assertSame([1], Discussion::find(1)->marquee_related);
+        $this->assertSame(2, self::link(1)?->media_id);
+        $this->assertSame([1], (self::link(1)?->relatedIds() ?: null));
     }
 
     #[Test]
@@ -321,7 +331,87 @@ class MarqueeTest extends TestCase
         ]));
 
         $this->assertSame(200, $response->getStatusCode());
-        $this->assertNull(Discussion::find(1)->marquee_media_id);
+        $this->assertNull(self::link(1)?->media_id);
+    }
+
+    #[Test]
+    public function the_move_off_discussions_keeps_every_link_and_down_puts_them_back(): void
+    {
+        $migration = require __DIR__.'/../../../migrations/2026_11_19_000003_move_marquee_links_off_discussions.php';
+        $schema = $this->app()->getContainer()->make(\Illuminate\Database\ConnectionInterface::class)->getSchemaBuilder();
+        $db = $schema->getConnection();
+
+        // Down: the old columns come back with the values.
+        $db->table('marquee_related')->insert(['discussion_id' => 1, 'media_id' => 2, 'position' => 0]);
+        $db->table('marquee_discussions')->where('discussion_id', 1)->update(['backdrops' => '{"1":"none"}']);
+        $migration['down']($schema);
+        $row = $db->table('discussions')->where('id', 1)->first();
+        $this->assertSame(1, (int) $row->marquee_media_id);
+        $this->assertSame('[2]', $row->marquee_related);
+        $this->assertSame('{"1":"none"}', $row->marquee_backdrops);
+        $this->assertSame(1, (int) $db->table('discussions')->where('id', 2)->value('marquee_episode'));
+
+        // As a 1.20 forum has them, with a related id whose title is gone: up moves what is real.
+        $db->table('marquee_related')->delete();
+        $db->table('marquee_discussions')->delete();
+        $db->table('discussions')->where('id', 1)->update(['marquee_related' => '[2,99,1]']);
+        $migration['up']($schema);
+
+        $this->assertFalse($schema->hasColumn('discussions', 'marquee_media_id'));
+        $this->assertSame([1 => 'none'], self::link(1)->backdrops);
+        $this->assertSame([2], self::link(1)->relatedIds());
+        $this->assertSame([2, 1, 1], [self::link(2)->media_id, self::link(2)->season, self::link(2)->episode]);
+    }
+
+    #[Test]
+    public function while_a_discussion_saves_its_changed_link_is_the_loaded_relation(): void
+    {
+        // What Spoiler Shield reads in its saving listener.
+        $this->app();
+        $seen = [];
+        Discussion::saving(function (Discussion $d) use (&$seen) {
+            if ($d->relationLoaded('marqueeLink') && $d->marqueeLink?->isDirty(['media_id', 'season', 'episode'])) {
+                $seen[] = [$d->marqueeLink->media_id, $d->marqueeLink->season, $d->marqueeLink->episode];
+            }
+        });
+
+        $this->assertSame(200, $this->patchDiscussion(['marquee' => ['kind' => 'tv', 'id' => '1396', 'season' => 1]])->getStatusCode());
+        $this->assertSame(200, $this->patchDiscussion(['marquee' => null])->getStatusCode());
+        $this->assertSame([[2, 1, null], [null, null, null]], $seen);
+        $this->assertNull(self::link(1));
+    }
+
+    #[Test]
+    public function posts_with_linked_discussions_cost_the_same_queries_for_one_or_many(): void
+    {
+        [$queries, $counting] = [0, false];
+        $this->database()->listen(function () use (&$queries, &$counting) {
+            $queries += $counting ? 1 : 0;
+        });
+
+        $count = function (int $discussions) use (&$queries, &$counting): int {
+            $now = Carbon::now()->toDateTimeString();
+            $db = $this->database();
+            $db->table('posts')->delete();
+            $db->table('marquee_discussions')->where('discussion_id', '>=', 100)->delete();
+            $db->table('discussions')->where('id', '>=', 100)->delete();
+            for ($id = 100; $id < 100 + $discussions; $id++) {
+                $db->table('discussions')->insert(['id' => $id, 'title' => "D$id", 'slug' => "d$id", 'user_id' => 1, 'created_at' => $now, 'comment_count' => 1, 'first_post_id' => $id]);
+                $db->table('posts')->insert(['id' => $id, 'discussion_id' => $id, 'number' => 1, 'user_id' => 1, 'type' => 'comment', 'created_at' => $now, 'content' => '<t><p>Hi</p></t>']);
+                $db->table('marquee_discussions')->insert(['discussion_id' => $id, 'media_id' => 2, 'season' => 1]);
+            }
+
+            [$queries, $counting] = [0, true];
+            $response = $this->send($this->request('GET', '/api/posts', ['authenticatedAs' => 1])->withQueryParams(['filter' => ['author' => 'admin']]));
+            $counting = false;
+            $this->assertSame(200, $response->getStatusCode());
+            $this->assertSame($discussions, substr_count((string) $response->getBody(), '"marqueeSeason":1'));
+
+            return $queries;
+        };
+
+        $count(1);
+        $this->assertSame($count(1), $count(6));
     }
 
     #[Test]
@@ -601,7 +691,7 @@ class MarqueeTest extends TestCase
         $this->setting(Settings::LANGUAGE, 'fr');
         $this->setting(Settings::DEEPL_KEY, 'test-key:fx');
 
-        $deepl = new class extends DeepL {
+        $deepl = new class(new \Ernestdefoe\Marquee\HttpClients()) extends DeepL {
             public int $calls = 0;
             public bool $fail = false;
 
@@ -777,7 +867,7 @@ class MarqueeTest extends TestCase
     {
         $this->assertSame(403, $this->uploadBackdrop(2)->getStatusCode());
         $this->assertSame(403, $this->patchDiscussion(['marqueeBackdrops' => ['1' => 'none']], 2)->getStatusCode());
-        $this->assertNull(Discussion::find(1)->marquee_backdrops);
+        $this->assertNull(self::link(1)?->backdrops);
     }
 
     #[Test]
@@ -786,7 +876,7 @@ class MarqueeTest extends TestCase
         $response = $this->uploadBackdrop(1);
         $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
 
-        $first = Discussion::find(1)->marquee_backdrops[1];
+        $first = self::link(1)?->backdrops[1];
         $this->assertMatchesRegularExpression('#^marquee-backdrops/1-[a-z0-9]{10}\.webp$#', $first);
         $this->assertTrue($this->disk()->exists($first));
         $this->assertStringEndsWith($first, $this->json($response)['data']['backdrops']['1']);
@@ -796,36 +886,82 @@ class MarqueeTest extends TestCase
 
         // Replacing deletes the old file.
         $this->uploadBackdrop(1);
-        $second = Discussion::find(1)->marquee_backdrops[1];
+        $second = self::link(1)?->backdrops[1];
         $this->assertNotSame($first, $second);
         $this->assertFalse($this->disk()->exists($first));
 
         // Anything but the source's own or none is refused; deleting removes the file.
         $this->assertSame(422, $this->patchDiscussion(['marqueeBackdrops' => ['1' => 'https://example.com/x.jpg']])->getStatusCode());
         $this->assertSame(200, $this->patchDiscussion(['marqueeBackdrops' => ['1' => null]])->getStatusCode());
-        $this->assertNull(Discussion::find(1)->marquee_backdrops);
+        $this->assertNull(self::link(1)?->backdrops);
         $this->assertFalse($this->disk()->exists($second));
 
         $this->uploadBackdrop(1);
-        $third = Discussion::find(1)->marquee_backdrops[1];
+        $third = self::link(1)?->backdrops[1];
         $this->assertSame(200, $this->patchDiscussion(['marqueeBackdrops' => ['1' => 'none']])->getStatusCode());
-        $this->assertSame([1 => 'none'], Discussion::find(1)->marquee_backdrops);
+        $this->assertSame([1 => 'none'], self::link(1)?->backdrops);
         $this->assertFalse($this->disk()->exists($third));
+    }
+
+    #[Test]
+    public function linking_a_season_queues_fetching_it_unless_it_is_stored(): void
+    {
+        $pushed = new \ArrayObject();
+        $c = $this->app()->getContainer();
+        $c->instance(\Illuminate\Contracts\Queue\Queue::class, new class($pushed) extends \Illuminate\Queue\NullQueue {
+            public function __construct(private \ArrayObject $pushed)
+            {
+            }
+
+            public function push($job, $data = '', $queue = null)
+            {
+                $this->pushed[] = $job;
+            }
+        });
+        $repository = $c->make(MediaRepository::class);
+        $show = Media::query()->find(2);
+
+        $repository->seasonLater($show, 1);
+        $this->assertCount(0, $pushed, 'season 1 is stored and fresh');
+
+        $repository->seasonLater($show, 2);
+        $this->assertCount(1, $pushed);
+        $this->assertInstanceOf(\Ernestdefoe\Marquee\Job\FetchSeason::class, $pushed[0]);
+    }
+
+    #[Test]
+    public function an_upload_while_another_is_saving_is_told_to_try_again(): void
+    {
+        $this->app();
+        $lock = $this->app()->getContainer()->make(\Illuminate\Contracts\Cache\Repository::class)->lock('marquee.backdrops.1', 10);
+        $this->assertTrue($lock->get());
+        $files = count($this->disk()->allFiles('marquee-backdrops'));
+
+        $response = $this->uploadBackdrop(1);
+        $lock->release();
+
+        $this->assertSame(422, $response->getStatusCode());
+        $this->assertSame('/data/attributes/backdrop', json_decode((string) $response->getBody(), true)['errors'][0]['source']['pointer']);
+        $this->assertNull(self::link(1)->backdrops);
+        $this->assertCount($files, $this->disk()->allFiles('marquee-backdrops'), 'the refused upload left no file');
+
+        $this->assertSame(200, $this->uploadBackdrop(1)->getStatusCode());
+        $this->assertCount(1, self::link(1)->backdrops);
     }
 
     #[Test]
     public function each_title_on_the_card_has_its_own_background(): void
     {
         $this->prepareDatabase([Discussion::class => [
-            ['id' => 3, 'title' => 'The Matrix and friends', 'user_id' => 1, 'created_at' => Carbon::now()->toDateTimeString(), 'comment_count' => 1, 'marquee_media_id' => 1, 'marquee_related' => '[2]'],
-        ]]);
+            ['id' => 3, 'title' => 'The Matrix and friends', 'user_id' => 1, 'created_at' => Carbon::now()->toDateTimeString(), 'comment_count' => 1],
+        ], 'marquee_discussions' => [['discussion_id' => 3, 'media_id' => 1]], 'marquee_related' => [['discussion_id' => 3, 'media_id' => 2, 'position' => 0]]]);
 
         // Only titles on the card.
         $this->assertSame(422, $this->uploadBackdrop(1, 3, 99)->getStatusCode());
 
         $this->assertSame(200, $this->uploadBackdrop(1, 3, 2)->getStatusCode());
         $this->assertSame(200, $this->uploadBackdrop(1, 3)->getStatusCode());
-        $map = Discussion::find(3)->marquee_backdrops;
+        $map = self::link(3)?->backdrops;
         $this->assertEqualsCanonicalizing([1, 2], array_keys($map));
         $this->assertNotSame($map[1], $map[2]);
 
@@ -841,7 +977,7 @@ class MarqueeTest extends TestCase
             'json' => ['data' => ['type' => 'discussions', 'id' => '3', 'attributes' => ['marqueeRelated' => []]]],
         ]));
         $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
-        $this->assertSame([1 => $map[1]], Discussion::find(3)->marquee_backdrops);
+        $this->assertSame([1 => $map[1]], self::link(3)?->backdrops);
         $this->assertFalse($this->disk()->exists($map[2]));
         $this->assertTrue($this->disk()->exists($map[1]));
 
@@ -851,7 +987,7 @@ class MarqueeTest extends TestCase
             'json' => ['data' => ['type' => 'discussions', 'id' => '3', 'attributes' => ['marquee' => null]]],
         ]));
         $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
-        $this->assertNull(Discussion::find(3)->marquee_backdrops);
+        $this->assertNull(self::link(3)?->backdrops);
         $this->assertFalse($this->disk()->exists($map[1]));
     }
 
@@ -865,6 +1001,6 @@ class MarqueeTest extends TestCase
             ->withUploadedFiles(['backdrop' => new \Laminas\Diactoros\UploadedFile($path, filesize($path), UPLOAD_ERR_OK, 'x.jpg', 'image/jpeg')]));
 
         $this->assertSame(422, $response->getStatusCode());
-        $this->assertNull(Discussion::find(1)->marquee_backdrops);
+        $this->assertNull(self::link(1)?->backdrops);
     }
 }

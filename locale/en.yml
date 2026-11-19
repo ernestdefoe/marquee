@@ -53,6 +53,7 @@ ernestdefoe-marquee:
   api:
     link_invalid: That title could not be linked. Pick it again from the list.
     link_unavailable: The title source could not be reached, so the title was not linked. Try again in a moment.
+    backdrop_busy: Another background for this discussion is being saved. Try again in a moment.
 
   forum:
     kind:

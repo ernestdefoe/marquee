@@ -4,7 +4,7 @@ namespace Ernestdefoe\Marquee\Tests\integration\api;
 
 use Carbon\Carbon;
 use Ernestdefoe\Marquee\Console\DescribeCommand;
-use Ernestdefoe\Marquee\Later;
+use Ernestdefoe\Marquee\Job\DescribeMedia;
 use Ernestdefoe\Marquee\Media;
 use Ernestdefoe\Marquee\MediaRepository;
 use Ernestdefoe\Marquee\Settings;
@@ -41,7 +41,9 @@ class WikipediaTest extends TestCase
     private MockHandler $wikimedia;
     private ?\Closure $details = null;
     private int $deeplCalls = 0;
-    private Later $later;
+    /** @var list<DescribeMedia> jobs the repository queued */
+    private array $queued = [];
+    private bool $syncQueue = false;
 
     protected function setUp(): void
     {
@@ -67,7 +69,7 @@ class WikipediaTest extends TestCase
 
             public function __construct(UrlGenerator $url, HandlerStack $stack)
             {
-                parent::__construct($url);
+                parent::__construct($url, new \Ernestdefoe\Marquee\HttpClients());
                 $this->mock = new Client(['handler' => $stack, 'headers' => ['User-Agent' => 'test']]);
             }
 
@@ -108,9 +110,40 @@ class WikipediaTest extends TestCase
             }
         });
 
-        $c->instance(Later::class, $this->later = new Later(new \Psr\Log\NullLogger()));
+        $test = $this;
+        $c->instance(\Illuminate\Contracts\Queue\Queue::class, $this->syncQueue ? $this->syncQueue($c) : new class($test) extends \Illuminate\Queue\NullQueue {
+            public function __construct(private WikipediaTest $test)
+            {
+            }
+
+            public function push($job, $data = '', $queue = null)
+            {
+                $this->test->queue($job);
+            }
+        });
 
         return $c->make(MediaRepository::class);
+    }
+
+    private function syncQueue(\Illuminate\Contracts\Container\Container $c): \Illuminate\Queue\SyncQueue
+    {
+        $queue = new \Illuminate\Queue\SyncQueue();
+        $queue->setContainer($c);
+
+        return $queue;
+    }
+
+    public function queue(DescribeMedia $job): void
+    {
+        $this->queued[] = $job;
+    }
+
+    /** What a queue worker does: run each queued job. */
+    private function work(MediaRepository $repository): void
+    {
+        while ($job = array_shift($this->queued)) {
+            $job->handle($repository);
+        }
     }
 
     public function countDeepL(): void
@@ -289,26 +322,47 @@ class WikipediaTest extends TestCase
     {
         $this->setting('default_locale', 'fr');
 
-        // The composer's look-up: IGDB only; Wikimedia waits until the response has gone.
+        // The composer's look-up: IGDB only; Wikimedia is queued.
         $repository = $this->repository([$this->json(self::SEARCH), $this->json(self::SITELINK), $this->json(self::SUMMARY)]);
         $media = $repository->resolve('game', '14593', true);
         $this->assertCount(0, $this->sent);
         $this->assertSame(self::ENGLISH, $media->data['overview']);
         $this->assertNotNull($media->describe_at);
+        $this->assertCount(1, $this->queued);
 
-        $this->later->flush();
+        $this->work($repository);
         $this->assertCount(3, $this->sent);
         $stored = Media::query()->first();
         $this->assertStringStartsWith('Hollow Knight est', $stored->data['overview']);
         $this->assertArrayNotHasKey('pending', $stored->data);
         $this->assertNull($stored->describe_at);
 
-        // Posted before the deferred work ran (or it died): the post finishes it first.
+        // With a worker, posting waits for nothing: the description is queued, and a second job finds it done.
         Media::query()->delete();
+        $this->queued = [];
+        $repository = $this->repository([$this->json(self::SEARCH), $this->json(self::SITELINK), $this->json(self::SUMMARY)]);
+        $repository->resolve('game', '14593', true);
+        $repository->resolveForPost('game', '14593');
+        $this->assertCount(0, $this->sent);
+        $this->work($repository);
+        $this->assertCount(3, $this->sent);
+
+        // Finished without the job (it died): resolving again in full finishes it first.
+        Media::query()->delete();
+        $this->queued = [];
         $repository = $this->repository([$this->json(self::SEARCH), $this->json(self::SITELINK), $this->json(self::SUMMARY)]);
         $repository->resolve('game', '14593', true);
         $media = $repository->resolve('game', '14593');
         $this->assertStringStartsWith('Hollow Knight est', $media->data['overview']);
+        $this->assertCount(3, $this->sent);
+
+        // The job then finds nothing left to do.
+        $this->work($repository);
+        $this->assertCount(3, $this->sent);
+
+        // A pruned title's job does nothing.
+        Media::query()->delete();
+        (new DescribeMedia(999))->handle($repository);
         $this->assertCount(3, $this->sent);
 
         // English forums have nothing to wait for: nothing is deferred.
@@ -316,8 +370,53 @@ class WikipediaTest extends TestCase
         $this->app()->getContainer()->make(\Flarum\Settings\SettingsRepositoryInterface::class)->set('default_locale', 'en');
         $media = $this->repository([])->resolve('game', '14593', true);
         $this->assertNull($media->describe_at);
-        $this->later->flush();
+        $this->assertCount(0, $this->queued);
         $this->assertCount(0, $this->sent);
+    }
+
+    #[Test]
+    public function on_the_sync_queue_the_quick_lookup_leaves_the_description_for_the_post(): void
+    {
+        $this->setting('default_locale', 'fr');
+        $this->syncQueue = true;
+
+        // A sync queue would run Wikimedia inside the look-up: nothing is queued, the look-up stays quick.
+        $repository = $this->repository([$this->json(self::SEARCH), $this->json(self::SITELINK), $this->json(self::SUMMARY)]);
+        $media = $repository->resolve('game', '14593', true);
+        $this->assertCount(0, $this->sent);
+        $this->assertSame(self::ENGLISH, $media->data['overview']);
+        $this->assertTrue($media->describe_at->lte(Carbon::now()));
+
+        // Posting finishes it: the sync queue runs the job before the response.
+        $media = $repository->resolveForPost('game', '14593');
+        $this->assertCount(3, $this->sent);
+        $this->assertStringStartsWith('Hollow Knight est', $media->data['overview']);
+        $this->assertNull($media->describe_at);
+    }
+
+    #[Test]
+    public function a_stale_copy_answers_the_lookup_and_the_job_refreshes_it(): void
+    {
+        $this->setting('default_locale', 'fr');
+
+        $repository = $this->repository([$this->json(self::SEARCH), $this->json(self::SITELINK), $this->json(self::SUMMARY)]);
+        $repository->resolve('game', '14593');
+        $this->assertCount(3, $this->sent);
+        Media::query()->update(['fetched_at' => Carbon::now()->subDays(8), 'title' => 'Old title']);
+
+        $repository = $this->repository([$this->json(self::SITELINK), $this->json(self::SUMMARY)]);
+        $media = $repository->resolve('game', '14593', true);
+        $this->assertSame('Old title', $media->title);
+        $this->assertCount(1, $this->queued);
+
+        // Another look-up while the job waits adds none.
+        $repository->resolve('game', '14593', true);
+        $this->assertCount(1, $this->queued);
+
+        $this->work($repository);
+        $stored = Media::query()->first();
+        $this->assertSame('Hollow Knight', $stored->title);
+        $this->assertTrue($stored->fetched_at->isToday());
     }
 
     #[Test]
@@ -332,14 +431,12 @@ class WikipediaTest extends TestCase
         $this->assertTrue($media->describe_at->isFuture());
 
         // Not due yet: the daily run asks nobody.
-        $this->repository([]);
-        (new DescribeCommand())->run(new \Symfony\Component\Console\Input\ArrayInput([]), new \Symfony\Component\Console\Output\NullOutput());
+        (new DescribeCommand($this->repository([])))->run(new \Symfony\Component\Console\Input\ArrayInput([]), new \Symfony\Component\Console\Output\NullOutput());
         $this->assertCount(0, $this->sent);
 
         // A day later the article exists. The item is known: sitelink + summary, IGDB is never asked.
         Media::query()->update(['describe_at' => Carbon::now()->subMinute()]);
-        $this->repository([$this->json(self::SITELINK), $this->json(self::SUMMARY)], ['title' => 'IGDB was asked']);
-        (new DescribeCommand())->run(new \Symfony\Component\Console\Input\ArrayInput([]), new \Symfony\Component\Console\Output\NullOutput());
+        (new DescribeCommand($this->repository([$this->json(self::SITELINK), $this->json(self::SUMMARY)], ['title' => 'IGDB was asked'])))->run(new \Symfony\Component\Console\Input\ArrayInput([]), new \Symfony\Component\Console\Output\NullOutput());
         $this->assertCount(2, $this->sent);
         $media = Media::query()->first();
         $this->assertSame('Hollow Knight', $media->title);
@@ -347,7 +444,8 @@ class WikipediaTest extends TestCase
         $this->assertNull($media->describe_at);
 
         // The card's flag for "no description in this language" goes with it.
-        $untranslated = \Closure::bind(fn (Media $m) => self::untranslated($m), null, \Ernestdefoe\Marquee\Api\MediaResource::class);
+        $resource = $this->app()->getContainer()->make(\Ernestdefoe\Marquee\Api\MediaResource::class);
+        $untranslated = \Closure::bind(fn (Media $m) => $this->untranslated($m), $resource, \Ernestdefoe\Marquee\Api\MediaResource::class);
         $this->assertSame([], $untranslated($media));
         $english = (new Media())->forceFill(['kind' => 'game', 'data' => ['overview' => self::ENGLISH]]);
         $this->assertSame(['untranslated' => ['have' => 'en', 'want' => 'fr']], $untranslated($english));

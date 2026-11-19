@@ -184,49 +184,9 @@ class IgdbGames implements Source
     /** Public so the shape can be checked without credentials. */
     public static function normalize(array $g, ?array $ttb, string $language = 'en'): array
     {
-        // IGDB keeps regional names (ja-JP, ko-KR); use one if it matches.
-        foreach ($g['game_localizations'] ?? [] as $local) {
-            $region = strtolower($local['region']['identifier'] ?? '');
-            if (! empty($local['name']) && $region !== '' && str_starts_with($region, strtolower(substr($language, 0, 2)))) {
-                $g['name'] = $local['name'];
-                break;
-            }
-        }
-
-        $companies = $g['involved_companies'] ?? [];
-        $slugs = fn (array $list) => array_map(fn ($x) => is_string($x['slug'] ?? null) && preg_match('/^[a-z0-9-]{1,60}$/', $x['slug']) ? $x['slug'] : null, $list);
-        $role = fn (string $flag) => array_values(array_unique(array_filter(array_map(
-            fn ($c) => ! empty($c[$flag]) ? ($c['company']['name'] ?? null) : null,
-            $companies
-        ))));
-
-        $trailer = null;
-        foreach ($g['videos'] ?? [] as $video) {
-            $id = TmdbClient::youtube($video['video_id'] ?? null);
-            $trailer ??= $id;
-            if ($id && stripos($video['name'] ?? '', 'trailer') !== false) {
-                $trailer = $id;
-                break;
-            }
-        }
-
-        $hours = fn ($seconds) => $seconds ? max(1, (int) round($seconds / 3600)) : null;
-        // Artworks include logos and cut-outs; a backdrop needs a wide, opaque one.
-        $backdrop = null;
-        foreach ($g['artworks'] ?? [] as $art) {
-            if (empty($art['alpha_channel']) && ($art['width'] ?? 0) >= 1280 && ($art['width'] ?? 0) >= 1.5 * ($art['height'] ?? PHP_INT_MAX)) {
-                $backdrop = $art['image_id'];
-                break;
-            }
-        }
-        // Else the largest screenshot, if it is big enough not to blur when stretched
-        // (Terranigma's are 240px wide; Wlork, Discuss d/40077 #94).
-        $shot = $backdrop === null && ! empty($g['screenshots']);
-        if ($shot) {
-            $shots = $g['screenshots'];
-            usort($shots, fn ($a, $b) => ($b['width'] ?? 0) <=> ($a['width'] ?? 0));
-            $backdrop = ($shots[0]['width'] ?? 0) >= 640 ? $shots[0]['image_id'] : null;
-        }
+        $g['name'] = self::localName($g, $language);
+        [$backdrop, $shot] = self::backdrop($g);
+        $named = fn (string $list) => array_values(array_filter($g[$list] ?? [], fn ($x) => isset($x['name'])));
 
         return [
             'title' => $g['name'],
@@ -235,8 +195,8 @@ class IgdbGames implements Source
             'genres' => array_column($g['genres'] ?? [], 'name'),
             'modes' => array_column($g['game_modes'] ?? [], 'name'),
             // IGDB's fixed genre and mode lists, translated by key on the forum (forum.genre.*, forum.mode.*).
-            'genreSlugs' => $slugs(array_values(array_filter($g['genres'] ?? [], fn ($x) => isset($x['name'])))),
-            'modeSlugs' => $slugs(array_values(array_filter($g['game_modes'] ?? [], fn ($x) => isset($x['name'])))),
+            'genreSlugs' => self::slugs($named('genres')),
+            'modeSlugs' => self::slugs($named('game_modes')),
             'platforms' => self::platforms($g['platforms'] ?? [], false),
             // Expansion, remake…: the card's first chip (null for a game).
             'type' => self::typeLabel($g),
@@ -247,26 +207,106 @@ class IgdbGames implements Source
             'overview' => $g['summary'] ?? null,
             'poster' => self::image($g['cover']['image_id'] ?? null),
             'backdrop' => self::image($backdrop),
-            // The admin can turn screenshot backgrounds off (Settings::GAME_SCREENSHOT_BACKDROP).
+            // The admin can turn screenshot backgrounds off (Settings::GAME_BACKDROP).
             'backdropShot' => $shot && $backdrop !== null,
             'screenshots' => array_map(fn ($s) => self::image($s['image_id']), array_slice($g['screenshots'] ?? [], 0, 6)),
-            'crew' => [
-                'developer' => $role('developer'),
-                'publisher' => $role('publisher'),
-                'series' => array_values(array_unique(array_merge(
-                    array_column($g['franchises'] ?? [], 'name'),
-                    array_column($g['collections'] ?? [], 'name')
-                ))),
-            ],
-            'timeToBeat' => $ttb && ($ttb['count'] ?? 0) > 0 ? [
-                'hastily' => $hours($ttb['hastily'] ?? null),
-                'normally' => $hours($ttb['normally'] ?? null),
-                'completely' => $hours($ttb['completely'] ?? null),
-            ] : null,
-            'trailer' => $trailer,
+            'crew' => self::crew($g),
+            'timeToBeat' => self::timeToBeat($ttb),
+            'trailer' => self::trailer($g['videos'] ?? []),
             'url' => str_starts_with($g['url'] ?? '', 'https://www.igdb.com/') ? $g['url'] : null,
             // Wikidata knows games by this (P5794); it leads to Wikipedia's description in other languages.
             'slug' => preg_match('/^[a-z0-9-]{1,100}$/', $g['slug'] ?? '') ? $g['slug'] : null,
+        ];
+    }
+
+    /** IGDB keeps regional names (ja-JP, ko-KR); use one if it matches. */
+    private static function localName(array $g, string $language): string
+    {
+        foreach ($g['game_localizations'] ?? [] as $local) {
+            $region = strtolower($local['region']['identifier'] ?? '');
+            if (! empty($local['name']) && $region !== '' && str_starts_with($region, strtolower(substr($language, 0, 2)))) {
+                return $local['name'];
+            }
+        }
+
+        return $g['name'];
+    }
+
+    /** @return list<string|null> */
+    private static function slugs(array $list): array
+    {
+        return array_map(fn ($x) => is_string($x['slug'] ?? null) && preg_match('/^[a-z0-9-]{1,60}$/', $x['slug']) ? $x['slug'] : null, $list);
+    }
+
+    /** A video named as a trailer, else the first one on YouTube. */
+    private static function trailer(array $videos): ?string
+    {
+        $trailer = null;
+        foreach ($videos as $video) {
+            $id = TmdbClient::youtube($video['video_id'] ?? null);
+            $trailer ??= $id;
+            if ($id && stripos($video['name'] ?? '', 'trailer') !== false) {
+                return $id;
+            }
+        }
+
+        return $trailer;
+    }
+
+    /** @return array{0: string|null, 1: bool} the backdrop's image id, and whether it is a screenshot */
+    private static function backdrop(array $g): array
+    {
+        // Artworks include logos and cut-outs; a backdrop needs a wide, opaque one.
+        foreach ($g['artworks'] ?? [] as $art) {
+            if (empty($art['alpha_channel']) && ($art['width'] ?? 0) >= 1280 && ($art['width'] ?? 0) >= 1.5 * ($art['height'] ?? PHP_INT_MAX)) {
+                return [$art['image_id'], false];
+            }
+        }
+
+        // Else the largest screenshot, if it is big enough not to blur when stretched
+        // (Terranigma's are 240px wide; Wlork, Discuss d/40077 #94).
+        if (empty($g['screenshots'])) {
+            return [null, false];
+        }
+
+        $shots = $g['screenshots'];
+        usort($shots, fn ($a, $b) => ($b['width'] ?? 0) <=> ($a['width'] ?? 0));
+
+        return [($shots[0]['width'] ?? 0) >= 640 ? $shots[0]['image_id'] : null, true];
+    }
+
+    /** @return array{developer: list<string>, publisher: list<string>, series: list<string>} */
+    private static function crew(array $g): array
+    {
+        $companies = $g['involved_companies'] ?? [];
+        $role = fn (string $flag) => array_values(array_unique(array_filter(array_map(
+            fn ($c) => ! empty($c[$flag]) ? ($c['company']['name'] ?? null) : null,
+            $companies
+        ))));
+
+        return [
+            'developer' => $role('developer'),
+            'publisher' => $role('publisher'),
+            'series' => array_values(array_unique(array_merge(
+                array_column($g['franchises'] ?? [], 'name'),
+                array_column($g['collections'] ?? [], 'name')
+            ))),
+        ];
+    }
+
+    /** @return array{hastily: int|null, normally: int|null, completely: int|null}|null hours */
+    private static function timeToBeat(?array $ttb): ?array
+    {
+        if (! $ttb || ($ttb['count'] ?? 0) <= 0) {
+            return null;
+        }
+
+        $hours = fn ($seconds) => $seconds ? max(1, (int) round($seconds / 3600)) : null;
+
+        return [
+            'hastily' => $hours($ttb['hastily'] ?? null),
+            'normally' => $hours($ttb['normally'] ?? null),
+            'completely' => $hours($ttb['completely'] ?? null),
         ];
     }
 

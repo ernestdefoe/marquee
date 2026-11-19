@@ -16,6 +16,11 @@ use Symfony\Component\Console\Input\InputOption;
  */
 class DescribeCommand extends AbstractCommand
 {
+    public function __construct(private MediaRepository $media)
+    {
+        parent::__construct();
+    }
+
     protected function configure(): void
     {
         $this->setName('marquee:describe')
@@ -25,7 +30,6 @@ class DescribeCommand extends AbstractCommand
 
     protected function fire(): int
     {
-        $media = resolve(MediaRepository::class);
         $count = 0;
 
         Media::query()
@@ -34,9 +38,9 @@ class DescribeCommand extends AbstractCommand
             ->orderBy('describe_at')
             ->limit(max(1, (int) $this->input->getOption('limit')))
             ->get()
-            ->each(function (Media $title) use ($media, &$count) {
-                if ($media->describes($title->kind)) {
-                    $media->describe($title);
+            ->each(function (Media $title) use (&$count) {
+                if ($this->media->describes($title->kind)) {
+                    $this->media->describe($title);
                     $count++;
                 }
             });

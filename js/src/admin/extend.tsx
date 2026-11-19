@@ -1,14 +1,16 @@
-import { Admin } from 'flarum/common/extenders';
+import Extend from 'flarum/common/extenders';
+import type ExtensionPage from 'flarum/admin/components/ExtensionPage';
+import type Mithril from 'mithril';
 import app from 'flarum/admin/app';
 import extractText from 'flarum/common/utils/extractText';
 import TagSources from './TagSources';
 
-const t = (key, params) => app.translator.trans(`ernestdefoe-marquee.admin.${key}`, params);
+const t = (key: string, params: Record<string, unknown> = {}): Mithril.Children => app.translator.trans(`ernestdefoe-marquee.admin.${key}`, params);
 
 export default [
-  new Admin()
+  new Extend.Admin()
     // Custom so the help can carry a link: a setting's help is not rendered as rich text.
-    .customSetting(function () {
+    .customSetting(function (this: ExtensionPage) {
       return (
         <div className="Form-group">
           <label for="marquee-tmdb-token">{t('tmdb_token_label')}</label>
@@ -26,7 +28,7 @@ export default [
       );
     }, 100)
     // Games: IGDB uses Twitch app credentials, exchanged on the server for a token.
-    .customSetting(function () {
+    .customSetting(function (this: ExtensionPage) {
       return (
         <div className="Form-group">
           <label for="marquee-igdb-id">{t('igdb_label')}</label>
@@ -54,7 +56,7 @@ export default [
       );
     }, 95)
     // Optional: translates game and book text, which only comes in English.
-    .customSetting(function () {
+    .customSetting(function (this: ExtensionPage) {
       return (
         <div className="Form-group">
           <label for="marquee-deepl-key">{t('deepl_label')}</label>
@@ -125,7 +127,6 @@ export default [
         label: t('list_meta_label'),
         help: t('list_meta_help'),
         options: { kind_year: t('list_meta_kind_year'), year: t('list_meta_year'), none: t('list_meta_none') },
-        default: 'kind_year',
       }),
       84
     )
@@ -158,7 +159,6 @@ export default [
           artwork: t('game_backdrop_options.artwork'),
           none: t('game_backdrop_options.none'),
         },
-        default: 'artwork_screenshot',
       }),
       81
     )
@@ -180,7 +180,7 @@ export default [
       }),
       81
     )
-    .customSetting(function () {
+    .customSetting(function (this: ExtensionPage) {
       return <TagSources stream={this.setting('ernestdefoe-marquee.tags', '{}')} />;
     }, 80)
     .permission(

@@ -1,8 +1,26 @@
-import Component from 'flarum/common/Component';
+import Component, { type ComponentAttrs } from 'flarum/common/Component';
+import type Mithril from 'mithril';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import classList from 'flarum/common/utils/classList';
 import { t, text, img, sourceName } from '../util';
 import { search, lookup } from '../api';
+import type { PickedTitle, SearchResult } from '../types';
+
+export interface TitlePickerAttrs extends ComponentAttrs {
+  value: string;
+  oninput: (value: string) => void;
+  kind?: string | null;
+  linked: boolean;
+  onpick: (link: PickedTitle) => void;
+  onlookup?: (link: PickedTitle, before: PickedTitle) => void;
+  onkeydown?: (e: KeyboardEvent) => void;
+  placeholder?: Mithril.Children;
+  kindPlaceholder?: string;
+  disabled?: boolean;
+  inputClassName?: string;
+  focusOnKind?: boolean;
+  wrapper?: string;
+}
 
 /**
  * A title input that, given a `kind`, searches that source and offers a
@@ -14,8 +32,21 @@ import { search, lookup } from '../api';
  * focusOnKind (move the cursor here once a kind appears), wrapper (element, default h3),
  * onlookup(link, before) (the stored title came back: year, seasons, artist).
  */
-export default class TitlePicker extends Component {
-  oninit(vnode) {
+export default class TitlePicker extends Component<TitlePickerAttrs> {
+  results!: SearchResult[];
+  active!: number;
+  open!: boolean;
+  loading!: boolean;
+  failed!: boolean;
+  seq!: number;
+  lastKind?: string | null;
+  scrollActive?: boolean;
+  timer?: ReturnType<typeof setTimeout>;
+  refitTimer?: ReturnType<typeof setTimeout>;
+  outside!: (e: PointerEvent) => void;
+  refit!: () => void;
+
+  oninit(vnode: Mithril.Vnode<TitlePickerAttrs, this>) {
     super.oninit(vnode);
     this.results = [];
     this.active = 0;
@@ -44,9 +75,11 @@ export default class TitlePicker extends Component {
           aria-autocomplete={kind ? 'list' : undefined}
           aria-controls={kind ? 'Marquee-results' : undefined}
           aria-activedescendant={open && this.results.length ? `Marquee-result-${this.active}` : undefined}
-          oninput={(e) => this.oninput(e.target.value)}
-          onkeydown={(e) => this.onkeydown(e)}
-          onfocus={() => this.results.length && (this.open = true)}
+          oninput={(e: InputEvent) => this.oninput((e.target as HTMLInputElement).value)}
+          onkeydown={(e: KeyboardEvent) => this.onkeydown(e)}
+          onfocus={() => {
+            if (this.results.length) this.open = true;
+          }}
           onblur={() => this.refit()}
         />
         {open ? this.dropdown(kind) : null}
@@ -54,7 +87,7 @@ export default class TitlePicker extends Component {
     );
   }
 
-  oncreate(vnode) {
+  oncreate(vnode: Mithril.VnodeDOM<TitlePickerAttrs, this>) {
     super.oncreate(vnode);
 
     /*
@@ -63,7 +96,7 @@ export default class TitlePicker extends Component {
      * just as it finally had the room to be scrolled.
      */
     this.outside = (e) => {
-      if (this.open && !this.element.contains(e.target)) {
+      if (this.open && !this.element.contains(e.target as Node)) {
         this.open = false;
         m.redraw();
       }
@@ -88,21 +121,21 @@ export default class TitlePicker extends Component {
     this.element.addEventListener(
       'touchmove',
       (e) => {
-        const list = e.target.closest('.Marquee-results');
+        const list = (e.target as Element).closest('.Marquee-results');
         if (list && list.scrollHeight > list.clientHeight) e.stopPropagation();
       },
       { passive: true }
     );
   }
 
-  onremove(vnode) {
+  onremove(vnode: Mithril.VnodeDOM<TitlePickerAttrs, this>) {
     super.onremove(vnode);
     document.removeEventListener('pointerdown', this.outside);
     window.visualViewport?.removeEventListener('resize', this.refit);
     clearTimeout(this.refitTimer);
   }
 
-  onupdate(vnode) {
+  onupdate(vnode: Mithril.VnodeDOM<TitlePickerAttrs, this>) {
     super.onupdate(vnode);
 
     // Once a sourced tag is chosen, put the cursor in the search box. The tag
@@ -129,10 +162,10 @@ export default class TitlePicker extends Component {
    * window up to make room for it.
    */
   fit() {
-    const list = this.element.querySelector('.Marquee-results');
+    const list = this.element.querySelector<HTMLElement>('.Marquee-results');
     if (!list) return null;
 
-    const bottoms = [];
+    const bottoms: number[] = [];
     const composer = this.element.closest('.Composer');
     if (composer) bottoms.push(composer.getBoundingClientRect().bottom);
     const viewport = window.visualViewport;
@@ -151,8 +184,8 @@ export default class TitlePicker extends Component {
     return list;
   }
 
-  dropdown(kind) {
-    let rows;
+  dropdown(kind: string) {
+    let rows: Mithril.Children[];
 
     if (this.loading && !this.results.length) {
       rows = [
@@ -163,34 +196,7 @@ export default class TitlePicker extends Component {
     } else if (this.failed) {
       rows = [<li className="Marquee-status">{t('picker.unavailable', { source: sourceName(kind) })}</li>];
     } else {
-      rows = this.results.map((r, i) => (
-        <li
-          id={`Marquee-result-${i}`}
-          role="option"
-          aria-selected={String(i === this.active)}
-          className={classList('Marquee-result', { active: i === this.active })}
-          onmousedown={(e) => (e.preventDefault(), this.pick(r))}
-          onmouseenter={() => (this.active = i)}
-        >
-          {r.poster ? <img src={img(r.poster, 'w92')} alt="" loading="lazy" decoding="async" /> : <span className="Marquee-noPoster" />}
-          <div className="Marquee-resultText">
-            <b>
-              {r.title}
-              {r.year ? <span className="Marquee-resultYear"> ({r.year})</span> : null}
-            </b>
-            {this.byline(kind, r) ? <small>{this.byline(kind, r)}</small> : null}
-            {r.type || (r.platforms && r.platforms.length) ? (
-              <ul className="Marquee-resultChips">
-                {r.type ? <li className="Marquee-resultType">{t(`picker.type.${r.type}`)}</li> : null}
-                {(r.platforms || []).slice(0, 6).map((p) => (
-                  <li>{p}</li>
-                ))}
-                {r.platforms && r.platforms.length > 6 ? <li>+{r.platforms.length - 6}</li> : null}
-              </ul>
-            ) : null}
-          </div>
-        </li>
-      ));
+      rows = this.results.map((r, i) => this.result(kind, r, i));
     }
 
     rows.push(
@@ -207,8 +213,46 @@ export default class TitlePicker extends Component {
     );
   }
 
+  result(kind: string, r: SearchResult, i: number) {
+    const platforms = r.platforms || [];
+
+    return (
+      <li
+        id={`Marquee-result-${i}`}
+        role="option"
+        aria-selected={String(i === this.active)}
+        className={classList('Marquee-result', { active: i === this.active })}
+        onmousedown={(e: MouseEvent) => {
+          e.preventDefault();
+          this.pick(r);
+        }}
+        onmouseenter={() => {
+          this.active = i;
+        }}
+      >
+        {r.poster ? <img src={img(r.poster, 'w92')} alt="" loading="lazy" decoding="async" /> : <span className="Marquee-noPoster" />}
+        <div className="Marquee-resultText">
+          <b>
+            {r.title}
+            {r.year ? <span className="Marquee-resultYear"> ({r.year})</span> : null}
+          </b>
+          {this.byline(kind, r) ? <small>{this.byline(kind, r)}</small> : null}
+          {r.type || platforms.length ? (
+            <ul className="Marquee-resultChips">
+              {r.type ? <li className="Marquee-resultType">{t(`picker.type.${r.type}`)}</li> : null}
+              {platforms.slice(0, 6).map((p) => (
+                <li>{p}</li>
+              ))}
+              {platforms.length > 6 ? <li>+{platforms.length - 6}</li> : null}
+            </ul>
+          ) : null}
+        </div>
+      </li>
+    );
+  }
+
   /** The line under a result: a game's developer; an album's artist and tracks; a book's authors; a film's genres. */
-  byline(kind, r) {
+  byline(kind: string, r: SearchResult) {
     if (kind === 'game') return r.developer || (r.platforms ? null : r.subtitle);
     return [r.subtitle, r.tracks ? text('meta.tracks_count', { count: r.tracks }) : null].filter(Boolean).join(' · ');
   }
@@ -217,7 +261,7 @@ export default class TitlePicker extends Component {
     return this.attrs.kind;
   }
 
-  oninput(value) {
+  oninput(value: string) {
     this.attrs.oninput(value);
     clearTimeout(this.timer);
 
@@ -232,7 +276,7 @@ export default class TitlePicker extends Component {
     this.timer = setTimeout(() => this.find(kind, value.trim()), 300);
   }
 
-  find(kind, query) {
+  find(kind: string, query: string) {
     const seq = ++this.seq;
     this.loading = true;
     this.failed = false;
@@ -248,6 +292,7 @@ export default class TitlePicker extends Component {
         m.redraw();
       },
       () => {
+        // Said in the list (picker.unavailable), where the results would have been.
         if (seq !== this.seq) return;
         this.results = [];
         this.loading = false;
@@ -257,9 +302,9 @@ export default class TitlePicker extends Component {
     );
   }
 
-  pick(result) {
-    const kind = this.kind();
-    const link = {
+  pick(result: SearchResult) {
+    const kind = this.kind()!;
+    const link: PickedTitle = {
       id: null,
       kind,
       externalId: result.id,
@@ -285,11 +330,12 @@ export default class TitlePicker extends Component {
         if (this.attrs.onlookup) this.attrs.onlookup(link, before);
         m.redraw();
       },
+      // Not stored yet: posting sends the source's id, and the server stores the title then.
       () => {}
     );
   }
 
-  onkeydown(e) {
+  onkeydown(e: KeyboardEvent) {
     const open = this.kind() && this.open && this.results.length;
 
     if (open && e.key === 'ArrowDown') this.active = (this.active + 1) % this.results.length;

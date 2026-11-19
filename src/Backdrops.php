@@ -11,7 +11,7 @@ use Intervention\Image\ImageManager;
  * A card's own backgrounds, in place of the source's artwork: one for each
  * title on it (the linked one and its related titles), uploaded by whoever may
  * change its linked title and stored with the forum's other assets.
- * `discussions.marquee_backdrops` maps a title's id to an image's path, or to
+ * `marquee_discussions.backdrops` maps a title's id to an image's path, or to
  * "none" for no image at all; a title not in it has the source's own.
  */
 class Backdrops

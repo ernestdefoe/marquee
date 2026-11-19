@@ -1,26 +1,42 @@
 import app from 'flarum/forum/app';
 import extractText from 'flarum/common/utils/extractText';
+import type Mithril from 'mithril';
+import type Discussion from 'flarum/common/models/Discussion';
+import type Tag from 'ext:flarum/tags/common/models/Tag';
+import type Stream from 'flarum/common/utils/Stream';
+import type ComposerState from 'flarum/forum/states/ComposerState';
+import type Media from './models';
+import type { DiscussionLink, EpisodeRef, PickedTitle } from './types';
 
-export const t = (key, params) => app.translator.trans(`ernestdefoe-marquee.forum.${key}`, params);
-export const text = (key, params) => extractText(t(key, params));
+type Params = Record<string, unknown>;
+
+export const t = (key: string, params: Params = {}): Mithril.Children => app.translator.trans(`ernestdefoe-marquee.forum.${key}`, params);
+export const text = (key: string, params: Params = {}): string => extractText(t(key, params));
 
 const TMDB_IMAGES = 'https://image.tmdb.org/t/p/';
 const IGDB_IMAGES = 'https://images.igdb.com/igdb/image/upload/';
 
 // The nearest IGDB size for each TMDB size used here (api-docs.igdb.com#images).
-const IGDB_SIZES = { w92: 'cover_small_2x', w185: 'thumb_2x', w300: 'screenshot_med', w342: 'cover_big_2x', w780: 'screenshot_big', w1280: '1080p' };
+const IGDB_SIZES: Record<string, string> = {
+  w92: 'cover_small_2x',
+  w185: 'thumb_2x',
+  w300: 'screenshot_med',
+  w342: 'cover_big_2x',
+  w780: 'screenshot_big',
+  w1280: '1080p',
+};
 
 /**
  * An image URL at one of the TMDB sizes (w92, w185, w300, w342, w780, w1280).
  * IGDB images are stored as `igdb:{image_id}` and mapped to IGDB's own sizes.
  */
 // Deezer serves any square size; these match the TMDB sizes used here.
-const DEEZER_SIZES = { w92: 120, w185: 250, w300: 500, w342: 500, w780: 1000, w1280: 1000 };
+const DEEZER_SIZES: Record<string, number> = { w92: 120, w185: 250, w300: 500, w342: 500, w780: 1000, w1280: 1000 };
 
 // Open Library covers come in S, M and L; M is about 180px wide, L about 500px.
-const OPEN_LIBRARY_SIZES = { w92: 'M', w185: 'M' };
+const OPEN_LIBRARY_SIZES: Record<string, string> = { w92: 'M', w185: 'M' };
 
-export const img = (path, size) => {
+export const img = (path: string | null | undefined, size: string): string | null => {
   if (!path) return null;
   if (path.startsWith('ol:')) {
     const [, type, id] = path.split(':');
@@ -35,39 +51,48 @@ export const img = (path, size) => {
   return TMDB_IMAGES + size + path;
 };
 
-export const pad = (n) => String(n).padStart(2, '0');
+export const pad = (n: number | string | null) => String(n).padStart(2, '0');
 
-export const runtime = (minutes) => {
+export const runtime = (minutes: number | null | undefined): string | null => {
   if (!minutes) return null;
   if (minutes < 60) return text('meta.runtime_minutes', { minutes });
   if (minutes % 60 === 0) return text('meta.runtime_hours_only', { hours: minutes / 60 });
   return text('meta.runtime_hours', { hours: Math.floor(minutes / 60), minutes: minutes % 60 });
 };
 
-export const date = (value) => (value ? dayjs(value).format('LL') : null);
+export const date = (value: string | null | undefined): string | null => (value ? dayjs(value).format('LL') : null);
 
-export const sourceName = (kind) => ({ game: 'IGDB', music: 'Deezer', book: 'Open Library' })[kind] || 'TMDB';
+const SOURCES: Record<string, string> = { game: 'IGDB', music: 'Deezer', book: 'Open Library' };
+export const sourceName = (kind: string): string => SOURCES[kind] || 'TMDB';
 
 /** Kind (movie | tv | game | music | book) for the first tag that has a source, if any. */
-export const kindForTags = (tags) => {
-  const map = app.forum.attribute('marqueeTags') || {};
-  return (tags || []).map((tag) => map[tag.id()]).find(Boolean);
+/** Which source each tag searches, by tag id. */
+const tagKinds = (): Record<string, string> => app.forum.attribute<Record<string, string> | null>('marqueeTags') || {};
+
+export const kindForTags = (tags: false | readonly (Tag | undefined)[] | null | undefined): string | undefined => {
+  const map = tagKinds();
+  return (tags || []).map((tag) => tag && map[String(tag.id())]).find(Boolean);
 };
 
-export const tagForKind = (kind) => {
-  const map = app.forum.attribute('marqueeTags') || {};
+export const tagForKind = (kind: string): Tag | null => {
+  const map = tagKinds();
   const id = Object.keys(map).find((tagId) => map[tagId] === kind);
-  return id ? app.store.getById('tags', id) : null;
+  return id ? app.store.getById<Tag>('tags', id) || null : null;
 };
 
 /** Whether titles carry the year: "Final Fantasy VII Remake (2020)". */
-export const titleYear = () => app.forum.attribute('marqueeTitleYear') !== false;
+export const titleYear = (): boolean => app.forum.attribute('marqueeTitleYear') !== false;
 
 /**
  * The discussion title for a title, one of its seasons, or one episode.
  * withYear overrides the admin switch.
  */
-export const titleFor = ({ title, year, artist }, season, episode, withYear = titleYear()) => {
+export const titleFor = (
+  { title, year, artist }: PickedTitle,
+  season?: number | null,
+  episode?: EpisodeRef | null,
+  withYear: boolean = titleYear()
+): string => {
   const name = artist ? `${artist} – ${title}` : title;
   const base = year && withYear ? `${name} (${year})` : name;
   if (season && episode) return text('title.episode', { base, season: pad(season), episode: pad(episode.n), name: episode.title });
@@ -76,7 +101,7 @@ export const titleFor = ({ title, year, artist }, season, episode, withYear = ti
 };
 
 /** What a discussion is linked to, or null. */
-export const linkFor = (discussion) => {
+export const linkFor = (discussion: Discussion): DiscussionLink | null => {
   const media = discussion.marqueeMedia && discussion.marqueeMedia();
   if (!media) return null;
 
@@ -89,8 +114,8 @@ export const linkFor = (discussion) => {
 };
 
 /** The plain object the composer keeps for a picked title. */
-export const pickFromMedia = (media) => ({
-  id: media.id(),
+export const pickFromMedia = (media: Media): PickedTitle => ({
+  id: media.id() ?? null,
   kind: media.kind(),
   externalId: media.externalId(),
   title: media.title(),
@@ -107,7 +132,7 @@ export const pickFromMedia = (media) => ({
  * (forum.genre.<slug>, forum.mode.<slug>). Titles stored before the slugs were
  * kept get them from the English name; anything unknown stays as it came.
  */
-export const igdbTerms = (group, names, slugs) =>
+export const igdbTerms = (group: string, names: string[] | null | undefined, slugs: string[] | null | undefined): string[] =>
   (names || []).map((name, i) => {
     const slug =
       (slugs && slugs[i]) ||
@@ -122,18 +147,32 @@ export const igdbTerms = (group, names, slugs) =>
   });
 
 /** Admin display switches (on unless turned off). */
-export const showScores = () => app.forum.attribute('marqueeScores') !== false;
-export const showSourceLink = () => app.forum.attribute('marqueeSourceLink') !== false;
+export const showScores = (): boolean => app.forum.attribute('marqueeScores') !== false;
+export const showSourceLink = (): boolean => app.forum.attribute('marqueeSourceLink') !== false;
 /** A game card's background: artwork_screenshot | artwork | none. */
-export const gameBackdrop = () => app.forum.attribute('marqueeGameBackdrop') || 'artwork_screenshot';
+export const gameBackdrop = (): string => app.forum.attribute<string | null>('marqueeGameBackdrop') || 'artwork_screenshot';
 /** The colour of a card with no background image; null = its tag's or the forum's banner colour. */
-export const backdropColor = () => app.forum.attribute('marqueeBackdropColor') || null;
-export const backdropTagColor = () => !!app.forum.attribute('marqueeBackdropTagColor');
+export const backdropColor = (): string | null => app.forum.attribute<string | null>('marqueeBackdropColor') || null;
+export const backdropTagColor = (): boolean => !!app.forum.attribute('marqueeBackdropTagColor');
 
 /** A CSS colour (a theme's custom property, say) as #rrggbb, or null when it isn't an opaque one. */
-export const hexColor = (value) => {
-  const ctx = (hexColor.ctx ||= document.createElement('canvas').getContext('2d'));
+let canvas: CanvasRenderingContext2D | null = null;
+export const hexColor = (value: string): string | null => {
+  const ctx = (canvas ||= document.createElement('canvas').getContext('2d'));
+  if (!ctx) return null;
   ctx.fillStyle = '#010203';
   ctx.fillStyle = value;
   return value && ctx.fillStyle !== '#010203' && ctx.fillStyle[0] === '#' ? ctx.fillStyle : null;
 };
+
+/** The new-discussion composer's fields as Marquee reads and writes them. */
+export interface MarqueeFields {
+  title: Stream<string>;
+  /** flarum/tags keeps the picked tags as a plain list. */
+  tags?: Tag[];
+  /** The picked title, or null once removed. */
+  marquee?: PickedTitle | null;
+}
+
+// Core types every composer field as a Stream; tags and marquee hold plain values.
+export const composerFields = (composer: ComposerState) => composer.fields as unknown as MarqueeFields;

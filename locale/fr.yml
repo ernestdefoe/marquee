@@ -53,6 +53,7 @@ ernestdefoe-marquee:
   api:
     link_invalid: Ce titre n'a pas pu être lié. Choisissez-le de nouveau dans la liste.
     link_unavailable: La source du titre ne répond pas, le titre n'a donc pas été lié. Réessayez dans un instant.
+    backdrop_busy: Un autre arrière-plan de cette discussion est en cours d'enregistrement. Réessayez dans un instant.
 
   forum:
     kind:

@@ -16,6 +16,10 @@ use Flarum\Api\Schema;
  */
 class MediaResource extends AbstractDatabaseResource
 {
+    public function __construct(private DataLanguage $language)
+    {
+    }
+
     public function type(): string
     {
         return 'marquee-media';
@@ -38,10 +42,10 @@ class MediaResource extends AbstractDatabaseResource
      *
      * @return array{untranslated?: array{have: string, want: string}}
      */
-    private static function untranslated(Media $m): array
+    private function untranslated(Media $m): array
     {
         $d = $m->data;
-        $language = resolve(DataLanguage::class)->get();
+        $language = $this->language->get();
         $wiki = Bridge::wiki($language);
 
         if (! in_array($m->kind, ['game', 'book'], true) || $wiki === null || $wiki === 'en'
@@ -64,7 +68,7 @@ class MediaResource extends AbstractDatabaseResource
             Schema\Str::make('artist')->nullable()->get(fn (Media $m) => $m->data['artist'] ?? null),
             Schema\Arr::make('details')
                 ->visible(fn (Media $m, Context $context) => $context->showing(DiscussionResource::class) || $context->updating(DiscussionResource::class))
-                ->get(fn (Media $m) => $m->data + self::untranslated($m)),
+                ->get(fn (Media $m) => $m->data + $this->untranslated($m)),
         ];
     }
 }
